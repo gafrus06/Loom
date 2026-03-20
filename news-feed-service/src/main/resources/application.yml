@@ -1,0 +1,87 @@
+server:
+  port: 9515
+
+spring:
+  application:
+    name: news-feed-service
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+      password: ${REDIS_PASSWORD:root}
+      # Пул соединений — не создавать новое соединение на каждый запрос
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5440/news_feed_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 3000
+
+  jpa:
+    open-in-view: false          # Не держать соединение на весь HTTP-запрос
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # Batching INSERT/UPDATE — ускоряет массовые операции
+        jdbc.batch_size: 30
+        order_inserts: true
+        order_updates: true
+        # default_batch_fetch_size дублирует @BatchSize глобально для всех коллекций
+        default_batch_fetch_size: 30
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 200MB      # видео до 200 МБ на файл
+      max-request-size: 500MB   # весь запрос (пост + несколько видео)
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+    registry-fetch-interval-seconds: 5
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 15
+
+# Feign: таймауты чтобы медленный сервис не подвешивал всю ленту
+feign:
+  client:
+    config:
+      default:
+        connect-timeout: 2000
+        read-timeout: 5000
+      camp-service:
+        connect-timeout: 2000
+        read-timeout: 3000
+      user-service:
+        connect-timeout: 2000
+        read-timeout: 3000
+      file-storage-service:
+        connect-timeout: 5000
+        read-timeout: 120000   # 2 минуты — для генерации presigned URL видео
+
+logging:
+  level:
+    ru.funkids.newsfeedservice: INFO
+    org.springframework.cache: WARN
+    org.hibernate.SQL: WARN

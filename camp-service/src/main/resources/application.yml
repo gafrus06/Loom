@@ -1,0 +1,80 @@
+server:
+  port: 9413
+
+spring:
+  application:
+    name: camp-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5439/campdb
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # validate — Hibernate проверяет схему, но не меняет её
+      # Flyway управляет схемой
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: false
+    # baseline-on-migrate: при первом запуске Flyway на уже существующей БД
+    # автоматически создаёт запись baseline в flyway_schema_history
+    baseline-on-migrate: true
+    # baseline-version должна быть МЕНЬШЕ первой реальной миграции (V1).
+    # Ставим 0 — тогда Flyway считает: "версия 0 = baseline (всё что уже есть)",
+    # и сможет применить V1 и V2 без конфликтов.
+    baseline-version: 0
+    locations: classpath:db/migration
+    # out-of-order: false — миграции должны идти строго по порядку
+    out-of-order: false
+
+  cache:
+    type: none
+
+kafka:
+  bootstrap-servers: localhost:9092
+  consumer:
+    group-id: camp-service
+    auto-offset-reset: earliest
+
+topics:
+  detachmentStageChanged: detachment.stage.changed
+  detachmentMembershipUpdated: detachment.membership.updated
+  childProfileAccessed: child.profile.accessed
+
+internal:
+  service:
+    secret: camp-service-secret-2024
+
+jakarta:
+  persistence:
+    validation:
+      mode: auto
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+    registry-fetch-interval-seconds: 5
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 15
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.springframework.web: INFO

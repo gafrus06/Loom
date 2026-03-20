@@ -1,0 +1,47 @@
+version: "3.9"
+
+# Локальная инфраструктура для news-feed-service.
+# Запуск: docker compose up -d
+# Остановка с удалением данных: docker compose down -v
+
+services:
+
+
+  # ─── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: redis-newsfeed
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass root
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    # allkeys-lru: при нехватке памяти вытесняем наименее используемые ключи.
+    # Подходит для кеша — лучше потерять старый кеш, чем получить OOM.
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "root", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis Commander (UI для отладки кеша) ───────────────────────────────────
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: "local:redis:6379:0:root"
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres-newsfeed-data:
+  redis-data:

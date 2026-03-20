@@ -1,0 +1,709 @@
+/* Тёмная тема с градиентами как на главной */
+:root {
+    --btn-grad-start: #5B2EFF; /* фиолетовый */
+    --btn-grad-end: #3C8DFF;   /* синий */
+
+    /* Новые цвета для кнопок "Назад" и "Подробнее" */
+    --secondary-grad-start: #2A2F45; /* тёмно-серый/синий */
+    --secondary-grad-end: #1A1F35;
+    --secondary-text: #B0B7D0;
+    --secondary-hover: #3A3F55;
+
+    --card-bg: rgba(20, 23, 30, 0.72);
+    --card-stroke: rgba(255, 255, 255, 0.06);
+    --text: #EAEFF7;
+    --muted: #A9B3C7;
+
+    --input-bg: #0F141B;
+    --input-stroke: #2a3040;
+    --input-focus: #3d6dff;
+
+    --radius: 14px;
+    --shadow: 0 20px 40px rgba(0, 0, 0, 0.35), 0 2px 10px rgba(0, 0, 0, 0.35);
+
+    /* Новые цвета для состояний */
+    --success: #4CD964;
+    --warning: #FF9500;
+    --danger: #FF3B30;
+    --danger-hover: #FF5E55;
+    --danger-light: rgba(255, 59, 48, 0.1);
+}
+
+/* Layout */
+.layout {
+    display: flex;
+    min-height: 100vh;
+    background: radial-gradient(
+            circle 510px at 67% 100%,
+            rgb(28, 11, 53) 6%,
+            rgb(27, 17, 58) 20%,
+            #0a0a0f 100%
+    );
+}
+
+.main-content {
+    flex: 1;
+    padding: 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    overflow-y: auto;
+    height: 100vh;
+}
+
+/* Page Header */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.page-header h1 {
+    margin: 0 0 8px 0;
+    font-size: 32px;
+    font-weight: 900;
+    letter-spacing: 0.2px;
+    color: var(--text);
+    background: linear-gradient(67deg, white 23%, powderblue 97%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.page-subtitle {
+    margin: 0;
+    font-size: 16px;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+/* Список и карточки лагерей/отрядов */
+.camps-grid,
+.detachments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
+    margin-top: 24px;
+}
+
+.camp-card,
+.detachment-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid var(--card-stroke);
+    backdrop-filter: blur(20px);
+    position: relative;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+}
+
+.camp-card:hover,
+.detachment-card:hover {
+
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    border-color: var(--btn-grad-start);
+}
+
+/* Заголовки карточек */
+.camp-header,
+.detachment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.camp-header h3,
+.detachment-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    flex: 1;
+}
+
+/* Локация и информация */
+.camp-location,
+.detachment-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.camp-location .icon,
+.info-item .icon {
+    font-size: 16px;
+    opacity: 0.8;
+}
+
+/* Детальная информация для отрядов */
+.detachment-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+}
+
+.info-label {
+    color: var(--muted);
+    font-weight: 500;
+    min-width: 80px;
+}
+
+.info-value {
+    color: var(--text);
+    font-weight: 600;
+    flex: 1;
+}
+
+/* Описание */
+.camp-description,
+.detachment-description {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 0 16px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    flex: 1;
+}
+
+/* Футер карточек */
+.camp-footer,
+.detachment-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 16px;
+    border-top: 1px solid var(--card-stroke);
+    margin-top: auto;
+}
+
+/* Кнопки - ОПТИМИЗИРОВАННЫЕ С НОВЫМИ ЦВЕТАМИ */
+.btn-primary {
+    background: linear-gradient(135deg, var(--btn-grad-start) 0%, var(--btn-grad-end) 100%);
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(91, 46, 255, 0.4);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: 0.5s;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(91, 46, 255, 0.6);
+}
+
+.btn-primary:hover::before {
+    left: 100%;
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* НОВЫЕ ЦВЕТА для кнопок "Назад" и "Подробнее" */
+.btn-secondary {
+    background: linear-gradient(135deg, var(--secondary-grad-start) 0%, var(--secondary-grad-end) 100%);
+    color: var(--secondary-text);
+    border: none;
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-secondary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: 0.5s;
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, var(--secondary-hover) 0%, var(--secondary-grad-end) 100%);
+    color: var(--text);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(42, 47, 69, 0.4);
+}
+
+.btn-secondary:hover::before {
+    left: 100%;
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+}
+
+.btn-sm {
+    padding: 8px 20px;
+    font-size: 14px;
+    border-radius: 8px;
+}
+
+/* Кнопка удаления на карточке */
+.detachment-delete-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    background: var(--danger-light);
+    border: 1px solid var(--danger);
+    border-radius: 50%;
+    color: var(--danger);
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+    backdrop-filter: blur(10px);
+}
+
+.detachment-card:hover .detachment-delete-btn {
+    opacity: 1;
+    visibility: visible;
+}
+
+.detachment-delete-btn:hover {
+    background: var(--danger);
+    color: white;
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+}
+
+/* Бейджи */
+.badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    backdrop-filter: blur(10px);
+}
+
+.badge-owner {
+    background: rgba(255, 215, 0, 0.15);
+    color: #FFD700;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.badge-counselor {
+    background: rgba(91, 46, 255, 0.15);
+    color: #9D8AFF;
+    border: 1px solid rgba(91, 46, 255, 0.3);
+}
+
+.badge-parent {
+    background: rgba(77, 171, 247, 0.15);
+    color: #4DABF7;
+    border: 1px solid rgba(77, 171, 247, 0.3);
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 80px 24px;
+    max-width: 500px;
+    margin: 60px auto;
+    background: var(--card-bg);
+    border-radius: calc(var(--radius) + 4px);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--card-stroke);
+    backdrop-filter: blur(20px);
+}
+
+.empty-icon {
+    font-size: 80px;
+    margin-bottom: 24px;
+    opacity: 0.5;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.empty-state h2 {
+    color: var(--text);
+    margin: 0 0 12px 0;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.empty-state p {
+    color: var(--muted);
+    margin: 0 0 32px 0;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* Loading spinner */
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(91, 46, 255, 0.2);
+    border-top: 4px solid var(--btn-grad-start);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-spinner p {
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* Error message */
+.error-message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: var(--danger-light);
+    border: 1px solid rgba(255, 59, 48, 0.3);
+    border-radius: 12px;
+    color: var(--danger);
+    margin-bottom: 24px;
+    backdrop-filter: blur(10px);
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.error-message span:first-child {
+    font-size: 20px;
+}
+
+/* Модальное окно */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-in;
+    padding: 20px;
+    backdrop-filter: blur(8px);
+}
+
+.modal-content {
+    background: rgba(20, 23, 30, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6);
+    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid var(--card-stroke);
+    backdrop-filter: blur(20px);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px) scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 28px 32px;
+    border-bottom: 1px solid var(--card-stroke);
+    background: linear-gradient(135deg, var(--btn-grad-start) 0%, var(--btn-grad-end) 100%);
+    border-radius: 20px 20px 0 0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 900;
+    color: white;
+}
+
+.modal-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.modal-content form {
+    padding: 32px;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 14px 18px;
+    border: 2px solid var(--input-stroke);
+    border-radius: 12px;
+    font-size: 15px;
+    transition: all 0.2s;
+    font-family: inherit;
+    background: var(--input-bg);
+    color: var(--text);
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--btn-grad-start);
+    box-shadow: 0 0 0 4px rgba(91, 46, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 24px 32px;
+    border-top: 1px solid var(--card-stroke);
+    background: rgba(15, 20, 27, 0.5);
+    border-radius: 0 0 20px 20px;
+}
+
+/* Модальное окно удаления */
+.delete-modal {
+    max-width: 450px;
+}
+
+.delete-header {
+    background: linear-gradient(135deg, var(--danger) 0%, var(--danger-hover) 100%) !important;
+}
+
+.delete-icon {
+    font-size: 60px;
+    text-align: center;
+    margin: 20px 0;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.delete-warning {
+    color: var(--danger) !important;
+    font-size: 14px !important;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.btn-delete {
+    background: linear-gradient(135deg, var(--danger) 0%, var(--danger-hover) 100%) !important;
+    border: none;
+    color: white;
+    padding: 10px 28px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(255, 59, 48, 0.4);
+}
+
+.btn-delete:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 59, 48, 0.6);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .main-content {
+        padding: 20px;
+        height: auto;
+        overflow-y: visible;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .camps-grid,
+    .detachments-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .camp-card,
+    .detachment-card {
+        padding: 20px;
+        min-height: auto;
+    }
+
+    .detachment-delete-btn {
+        opacity: 1;
+        visibility: visible;
+        top: 12px;
+        right: 12px;
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+
+    .modal-content {
+        margin: 0;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .modal-header {
+        border-radius: 0;
+        padding: 20px;
+    }
+
+    .modal-footer {
+        border-radius: 0;
+        padding: 20px;
+    }
+
+    .modal-content form {
+        padding: 20px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+}
+
+/* Плавная анимация для всех интерактивных элементов */
+* {
+    transition: background-color 0.3s, border-color 0.3s, transform 0.3s;
+}

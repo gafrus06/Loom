@@ -1,0 +1,217 @@
+:root{
+    --btn-grad-start:#5B2EFF;
+    --btn-grad-end:#3C8DFF;
+    --panel: rgba(20,23,30,.72);
+    --stroke: rgba(255,255,255,.06);
+    --text:#EAEFF7;
+    --muted:#A9B3C7;
+}
+
+/* верхняя панель выбора + стек отрядов */
+.teams-main .teams-top { margin-bottom: 18px; }
+.teams-top-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px;
+}
+.select-wrap label { display:block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+
+.det-stack {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    min-height: 48px;
+}
+.det-chip {
+    border: 0; cursor: pointer; padding: 10px 14px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    border: 1px solid rgba(255,255,255,.10);
+    color: var(--text); font-weight: 800;
+    transition: transform .12s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.det-chip:hover { transform: translateY(-1px); background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18); }
+.det-chip.active {
+    background: linear-gradient(90deg, var(--btn-grad-start), var(--btn-grad-end));
+    border-color: transparent;
+    box-shadow: 0 10px 22px rgba(60,141,255,.28);
+}
+.det-chip-text { white-space: nowrap; }
+
+/* кастомный тултип */
+.det-tip {
+    position: fixed; transform: translate(-50%, -105%);
+    background: rgba(10,10,15,.92);
+    border: 1px solid var(--stroke);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    white-space: nowrap;
+    z-index: 999;
+    box-shadow: 0 10px 24px rgba(0,0,0,.45);
+}
+
+/* двухколоночная нижняя часть */
+.two-cols {
+    display: grid;
+    grid-template-columns: 360px 1fr; /* слева поддержка, справа дети */
+    gap: 18px;
+}
+
+/* методическая поддержка */
+.support-col { display: grid; gap: 12px; align-content: start; }
+
+.stage-bar {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    margin-top: 6px;
+}
+.stage-seg {
+    position: relative;
+    border: 0; cursor: pointer; height: 34px; border-radius: 999px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.1);
+    color: var(--text);
+    transition: background .15s ease, border-color .15s ease, transform .12s ease;
+}
+.stage-seg.done {
+    background: linear-gradient(90deg, var(--btn-grad-start), var(--btn-grad-end));
+    border-color: transparent;
+}
+.stage-seg:active { transform: scale(.98); }
+.stage-label {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-size: 12px; font-weight: 800;
+}
+
+.tabs-row {
+    display: flex; gap: 8px; margin-top: 6px;
+}
+.tab-btn {
+    border:1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+    color: var(--text);
+    border-radius: 12px; padding: 8px 12px; font-weight: 800; cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+    font-size: 13px;
+}
+.tab-btn.active {
+    background: linear-gradient(90deg, var(--btn-grad-start), var(--btn-grad-end));
+    border-color: transparent;
+}
+.tab-pane {
+    margin-top: 6px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 12px;
+}
+
+.assistant { display: grid; gap: 8px; margin-top: 8px; }
+.assistant-label { font-size: 13px; color: var(--muted); }
+.assistant-input {
+    min-height: 88px; resize: vertical;
+}
+.assistant-answer { margin-top: 6px; }
+.answer-bubble {
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    padding: 12px;
+    border-radius: 12px;
+}
+
+/* дети */
+.kids-col { min-height: 280px; }
+.kids-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 10px;
+}
+
+.kid-pill {
+    height: 56px;
+    border-radius: 999px;
+    display: grid; place-items: center;
+    border: 1px solid rgba(255,255,255,.10);
+    background: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    color: var(--text);
+    font-weight: 800;
+    letter-spacing: .2px;
+    text-align: center;
+    padding: 0 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.kid-pill.male {
+    background: linear-gradient(135deg, rgba(13,71,161,.35), rgba(9,33,66,.28));
+    border-color: rgba(80,130,255,.25);
+}
+.kid-pill.female {
+    background: linear-gradient(135deg, rgba(161,13,98,.35), rgba(66,9,39,.28));
+    border-color: rgba(255,120,200,.25);
+}
+.kid-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+/* адаптив */
+@media (max-width: 1200px){
+    .two-cols { grid-template-columns: 1fr; } /* методподдержка над сеткой */
+    .kids-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+}
+@media (max-width: 760px){
+    .kids-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+
+:root{
+    --btn-grad-start:#5B2EFF;
+    --btn-grad-end:#3C8DFF;
+    --panel: rgba(20,23,30,.72);
+    --stroke: rgba(255,255,255,.06);
+    --text:#EAEFF7;
+    --muted:#A9B3C7;
+}
+
+/* верхняя панель выбора + стек чипов */
+.stack { display:flex; flex-wrap:wrap; gap:10px; min-height:48px; }
+.chip {
+    border:0; cursor:pointer; padding:10px 14px; border-radius:999px;
+    background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    border: 1px solid rgba(255,255,255,.10);
+    color: var(--text); font-weight:800;
+    transition: transform .12s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.chip:hover { transform: translateY(-1px); background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.18); }
+.chip.active { background: linear-gradient(90deg, var(--btn-grad-start), var(--btn-grad-end)); border-color: transparent; box-shadow: 0 10px 22px rgba(60,141,255,.28); }
+.tip {
+    position: fixed; transform: translate(-50%, -105%); background: rgba(10,10,15,.92);
+    border: 1px solid var(--stroke); color: var(--text); padding: 8px 12px; border-radius:10px; font-size:13px; white-space:nowrap; z-index:999; box-shadow: 0 10px 24px rgba(0,0,0,.45);
+}
+
+.two-cols { display:grid; grid-template-columns: 360px 1fr; gap:18px; }
+@media (max-width: 1200px){ .two-cols { grid-template-columns: 1fr; } }
+
+/* дети — 4 колонки */
+.kids-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; }
+@media (max-width: 1200px){ .kids-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (max-width: 760px){ .kids-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+
+.kid-pill {
+    height:56px; border-radius:999px; display:grid; place-items:center;
+    border:1px solid rgba(255,255,255,.10);
+    background: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    color:var(--text); font-weight:800; letter-spacing:.2px; text-align:center; padding:0 10px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.kid-pill.male   { background: linear-gradient(135deg, rgba(13,71,161,.35), rgba(9,33,66,.28)); border-color: rgba(80,130,255,.25); }
+.kid-pill.female { background: linear-gradient(135deg, rgba(161,13,98,.35), rgba(66,9,39,.28)); border-color: rgba(255,120,200,.25); }
+
+.stage-bar { display:grid; grid-template-columns: repeat(6, 1fr); gap:6px; margin-top:6px; }
+.stage-seg {
+    position:relative; border:0; cursor:pointer; height:34px; border-radius:999px;
+    background: rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); color:var(--text);
+    transition: background .15s ease, border-color .15s ease, transform .12s ease;
+}
+.stage-seg.done { background: linear-gradient(90deg, var(--btn-grad-start), var(--btn-grad-end)); border-color: transparent; }
+.stage-label { position:absolute; inset:0; display:grid; place-items:center; font-size:12px; font-weight:800; }
+.tabs-row { display:flex; gap:8px; margin-top:6px; }
+.tab-btn { border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); color:var(--text); border-radius:12px; padding:8px 12px; font-weight:800; cursor:pointer; transition: background .15s ease, border-color .15s ease; font-size:13px; }
+.tab-btn.active { background: linear-gradient(90deg, var(--btn-grad-start), var(--btn-grad-end)); border-color: transparent; }
+.tab-pane { margin-top:6px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 12px; }

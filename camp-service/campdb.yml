@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  camp-db:
+    image: postgres:17
+    container_name: camp-postgres-17
+    environment:
+      POSTGRES_DB: campdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # Настройки удобства (необязательно):
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5439:5432"   # пробрасываем наружу на 5435, как в application.yml
+    volumes:
+      - camp_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d campdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # (опционально) Adminer для просмотра БД через браузер
+  # adminer:
+  #   image: adminer:4
+  #   container_name: camp-adminer
+  #   ports:
+  #     - "8082:8080"
+  #   depends_on:
+  #     - camp-db
+  #   restart: unless-stopped
+
+volumes:
+  camp_pg_data:

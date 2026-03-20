@@ -1,0 +1,117 @@
+/* Модальное окно ограничения доступа */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+    max-width: 90%;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-content.access-denied {
+    text-align: center;
+    max-width: 450px;
+    padding: 40px 32px;
+}
+.modal-content.access {
+    text-align: center;
+    max-width: 450px;
+    padding: 40px 32px;
+}
+
+.access-denied-icon {
+    font-size: 72px;
+    margin-bottom: 20px;
+    animation: bounce 0.5s ease-in-out;
+}
+.access-icon {
+    font-size: 13px;
+    margin-bottom: 20px;
+    animation: bounce 0.5s ease-in-out;
+}
+
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.access-denied h2 {
+    color: #ff6b6b;
+    margin: 0 0 16px 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+.access h2 {
+    color: #9cff6b;
+    margin: 0 0 16px 0;
+    font-size: 60px;
+    font-weight: 600;
+}
+
+.access-denied p {
+    color: #666;
+    margin: 0 0 32px 0;
+    line-height: 1.6;
+    font-size: 16px;
+}
+
+.access-denied .btn-primary {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.access-denied .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.access-denied .btn-primary:active {
+    transform: translateY(0);
+}

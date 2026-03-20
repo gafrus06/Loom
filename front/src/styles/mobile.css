@@ -1,0 +1,638 @@
+/* ═══════════════════════════════════════════════════════════════════
+   mobile.css — адаптив для мобилок и планшетов.
+   Не меняет десктоп (> 1024px).
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+    --bottom-bar-h: 64px;
+    --btn-grad-start: #5B2EFF;
+    --btn-grad-end:   #3C8DFF;
+    --text:  #EAEFF7;
+    --muted: #A9B3C7;
+}
+
+.bottom-nav { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ≤ 760px — телефоны
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 760px) {
+
+    /* ── КЛЮЧЕВОЙ ФИХ: снимаем overflow:hidden с html/body/layout ── */
+    html, body, #root {
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        height: auto !important;
+        min-height: 100svh !important;
+        background: #0A0E14 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* layout — убираем max-width который оставляет серую полосу справа */
+    .layout {
+        display: flex !important;
+        flex-direction: row !important;   /* sidebar слева, main справа */
+        height: auto !important;
+        min-height: 100svh !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+    }
+
+    /* sidebar — прячем */
+    .sidebar { display: none !important; }
+
+    /* ── .main и .main-content — СКРОЛЛ ──────────────────────────── */
+    .main,
+    .main-content,
+    .detachment-page-fullscreen {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        overflow-x: hidden !important;
+        overflow-y: visible !important;
+        padding: 16px 14px calc(var(--bottom-bar-h) + 32px) !important;
+        box-sizing: border-box !important;
+        flex: 1 !important;
+    }
+
+    /* ── Bottom navigation bar ────────────────────────────────────── */
+    .bottom-nav {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        height: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom, 0px));
+        padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+        background: linear-gradient(180deg, rgba(8,10,18,.8) 0%, rgba(8,10,18,.98) 100%);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(255,255,255,.07);
+        z-index: 999;
+        gap: 2px;
+        align-items: center;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .bn-item,
+    .bottom-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 7px 4px 5px;
+        border-radius: 12px;
+        color: var(--muted);
+        text-decoration: none;
+        transition: background .15s, color .15s, transform .1s;
+        -webkit-tap-highlight-color: transparent;
+        position: relative;
+    }
+    .bn-item:active,
+    .bottom-nav-item:active                 { transform: scale(.94); }
+    .bn-item.active,
+    .bottom-nav-item.active                 { color: var(--text); background: rgba(255,255,255,.06); }
+
+    /* PNG-иконки */
+    .bn-ico {
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+        opacity: .6;
+        filter: brightness(0) invert(1);
+        flex-shrink: 0;
+        border-radius: 0;
+    }
+    .bn-item.active .bn-ico,
+    .bottom-nav-item.active .bn-ico         { opacity: 1; }
+
+    /* Аватар профиля — круглый, без фильтра */
+    .bn-avatar {
+        width: 26px !important;
+        height: 26px !important;
+        border-radius: 50% !important;
+        object-fit: cover !important;
+        filter: none !important;
+        opacity: 1 !important;
+        border: 1.5px solid rgba(255,255,255,.25);
+    }
+    .bn-item.active .bn-avatar,
+    .bottom-nav-item.active .bn-avatar {
+        border-color: rgba(91,46,255,.7);
+        box-shadow: 0 0 0 2px rgba(91,46,255,.3);
+    }
+
+    .bn-label,
+    .bottom-nav-label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .2px;
+        opacity: .6;
+        white-space: nowrap;
+    }
+    .bn-item.active .bn-label,
+    .bottom-nav-item.active .bn-label,
+    .bn-item.active .bottom-nav-label,
+    .bottom-nav-item.active .bottom-nav-label { opacity: 1; }
+
+    .bn-item.active::after,
+    .bottom-nav-item.active::after {
+        content: "";
+        position: absolute;
+        bottom: 2px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 20px; height: 2px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--btn-grad-start), var(--btn-grad-end));
+    }
+
+    /* ── Touch & iOS zoom ─────────────────────────────────────────── */
+    button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+    button, .btn-primary, .btn-secondary { min-height: 44px; }
+    input, select, textarea { font-size: 16px !important; }
+
+    /* ── HOME ──────────────────────────────────────────────────────── */
+    .dashboard         { grid-template-columns: 1fr !important; gap: 14px !important; }
+    .col-side          { grid-template-columns: 1fr !important; }
+    .page-title        { font-size: 22px !important; margin-bottom: 16px !important; }
+
+    /* ── CAMPS / SESSIONS / DETACHMENTS ───────────────────────────── */
+    .camps-grid,
+    .detachments-grid  { grid-template-columns: 1fr !important; gap: 12px !important; margin-top: 16px !important; }
+    .sessions-grid     { grid-template-columns: 1fr !important; gap: 12px !important; }
+    .camp-card,
+    .detachment-card,
+    .session-card      { padding: 18px !important; min-height: auto !important; }
+    .page-header       { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; margin-bottom: 20px !important; }
+    .page-header h1    { font-size: 24px !important; }
+    .page-header > button,
+    .page-header .btn-primary { width: 100% !important; box-sizing: border-box; }
+    .camp-footer,
+    .detachment-footer { flex-direction: column !important; gap: 8px !important; }
+    .camp-footer button,
+    .detachment-footer button { width: 100% !important; }
+
+    /* ── MODALS — выезжают снизу ──────────────────────────────────── */
+    .modal-overlay     { align-items: flex-end !important; padding: 0 !important; }
+    .modal-content,
+    .modal-content-styled,
+    .test-modal,
+    .delete-modal,
+    .child-view-modal,
+    .delete-confirm-modal,
+    .post-view-modal {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 92svh !important;
+        border-radius: 20px 20px 0 0 !important;
+        margin: 0 !important;
+        overflow-y: auto !important;
+    }
+    .post-view-inner   { flex-direction: column !important; height: auto !important; max-height: none !important; }
+    .post-view-media   { flex: none !important; width: 100% !important; max-height: 40svh !important; }
+    .post-view-info    { flex: none !important; width: 100% !important; }
+    .modal-header      { border-radius: 20px 20px 0 0 !important; padding: 18px 20px !important; }
+    .modal-footer      { border-radius: 0 !important; padding: 16px 20px !important; flex-direction: column !important; gap: 10px !important; }
+    .modal-footer button { width: 100% !important; }
+    .modal-content form  { padding: 16px 20px !important; }
+    .modal-actions-compact { flex-direction: column !important; }
+    .modal-actions-compact button,
+    .btn-modal-cancel,
+    .btn-modal-submit,
+    .btn-modal-delete  { width: 100% !important; }
+    .form-row-compact  { grid-template-columns: 1fr !important; }
+
+    /* ── DETACHMENT PAGE ───────────────────────────────────────────── */
+    .detachment-page-fullscreen {
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        flex-direction: column !important;
+        padding: 12px 12px calc(var(--bottom-bar-h) + 32px) !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    .detachment-content-grid  { grid-template-columns: 1fr !important; width: 100% !important; box-sizing: border-box !important; }
+    .left-section,
+    .right-section            { width: 100% !important; height: auto !important; min-height: auto !important; overflow: visible !important; box-sizing: border-box !important; }
+    .right-section            { gap: 12px !important; }
+    .children-grid-scroll     { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)) !important; height: auto !important; max-height: none !important; overflow: visible !important; }
+    .methodology-panel,
+    .stages-panel-compact,
+    .counselors-panel,
+    .ai-panel                 { height: auto !important; min-height: auto !important; width: 100% !important; box-sizing: border-box !important; }
+    .ai-chat-panel            { height: calc(100svh - 200px) !important; min-height: 480px !important; width: 100% !important; box-sizing: border-box !important; }
+    .child-delete-btn         { opacity: 1 !important; visibility: visible !important; }
+    .detachment-header        { flex-wrap: wrap !important; gap: 8px !important; width: 100% !important; box-sizing: border-box !important; }
+    .header-info h1           { font-size: 18px !important; }
+    .header-meta              { flex-wrap: wrap !important; font-size: 12px !important; }
+
+    /* ── PROFILE ───────────────────────────────────────────────────── */
+    .card            { min-width: 0 !important; padding: 16px !important; }
+    .profile-head    { grid-template-columns: 1fr !important; text-align: center !important; }
+    .avatar-wrap     { justify-items: center !important; }
+    .grid-2          { grid-template-columns: 1fr !important; }
+    .col-2           { grid-column: auto !important; }
+    .title-row       { display: flex !important; justify-content: space-between !important; align-items: center !important; flex-wrap: nowrap !important; gap: 8px !important; }
+    .section-title   { flex: 1; min-width: 0; }
+    .edit-actions    { display: flex !important; flex-wrap: nowrap !important; gap: 8px !important; }
+    .edit-actions .btn-ghost,
+    .edit-actions .btn-primary { flex: 1; min-width: 70px; }
+
+    /* ── USERS ─────────────────────────────────────────────────────── */
+    .ul-main {
+        padding: 16px 14px calc(var(--bottom-bar-h) + 32px) !important;
+        min-height: 0 !important;
+        overflow-y: visible !important;
+    }
+    .ul-page-header  { flex-direction: column !important; gap: 10px !important; margin-bottom: 16px !important; }
+    .ul-view-toggle  { align-self: flex-start; }
+    .ul-role-strip   { gap: 6px !important; }
+    .chip-label      { display: none !important; }
+    .ul-role-chip    { padding: 6px 10px !important; }
+    .ul-search-row   { flex-wrap: wrap !important; gap: 8px !important; margin-bottom: 16px !important; }
+    .ul-search-wrap  { max-width: 100% !important; width: 100% !important; }
+    .ul-results-count{ display: none !important; }
+
+    .ul-table-wrap        { overflow-x: hidden !important; border-radius: 12px !important; }
+    .ul-table             { min-width: 0 !important; width: 100% !important; font-size: 13px !important; }
+    .ul-table th,
+    .ul-table td          { padding: 10px 10px !important; font-size: 13px !important; }
+    .col-email,
+    .col-role-desktop     { display: none !important; }
+    .ul-table th:nth-child(2),
+    .ul-table td:nth-child(2) { width: auto !important; }
+    .ul-table th:last-child   { font-size: 0 !important; width: 80px !important; }
+    .ul-table td:last-child   { width: 80px !important; }
+    .ul-td-email-mobile   { display: block !important; font-size: 11px !important; color: #6c7a9c !important; margin-top: 2px !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; max-width: 140px !important; }
+    .ul-td-role-mobile    { display: inline-flex !important; margin-top: 4px !important; font-size: 10px !important; padding: 2px 6px !important; }
+    .ul-td-avatar         { width: 36px !important; height: 36px !important; }
+    .ul-td-name           { font-size: 13px !important; flex-wrap: wrap !important; }
+    .ul-goto-btn          { padding: 5px 10px !important; font-size: 12px !important; }
+    .ul-cards-grid   { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+    .ul-card         { padding: 14px !important; }
+    .ul-card-avatar  { width: 40px !important; height: 40px !important; }
+
+    /* ── MODALS ─────────────────────────────────────────────────────── */
+    .modal-overlay,
+    .post-view-overlay {
+        padding-bottom: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom, 0px) + 8px) !important;
+        align-items: flex-end !important;
+    }
+    .modal-content.create-post-modal {
+        max-height: calc(100svh - var(--bottom-bar-h) - env(safe-area-inset-bottom, 0px) - 32px) !important;
+        border-radius: 20px 20px 0 0 !important;
+        overflow-y: auto !important;
+        width: 100% !important;
+    }
+    .post-view-modal {
+        max-height: calc(100svh - var(--bottom-bar-h) - env(safe-area-inset-bottom, 0px) - 32px) !important;
+        border-radius: 20px 20px 0 0 !important;
+        overflow-y: auto !important;
+        width: 100% !important;
+    }
+
+    /* ── STATISTICS ────────────────────────────────────────────────── */
+    .stats-main {
+        padding: 16px 14px calc(var(--bottom-bar-h) + 32px) !important;
+        overflow-x: clip !important;
+        box-sizing: border-box !important;
+    }
+    .stats-kpi-row,
+    .stats-charts-row,
+    .stats-card-wide {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .kpi-card,
+    .stats-card {
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+    }
+
+    /* ── AUTH ──────────────────────────────────────────────────────── */
+    .auth-shell      { grid-template-columns: 1fr !important; }
+    .left-hero       { display: none !important; }
+    .right-panel     { padding: 24px 16px !important; min-height: 100svh; }
+    .auth-card       { width: 100% !important; }
+
+    /* ── ONBOARDING ────────────────────────────────────────────────── */
+    .ob-shell        { padding: 0 !important; align-items: stretch !important; }
+    .ob-card         { border-radius: 0 !important; min-height: 100svh; padding: 24px 18px !important; }
+
+    /* ── Методичка ─────────────────────────────────────────────────── */
+    .methodology-tabs  { flex-wrap: wrap !important; }
+    .tab-btn           { flex: 1 1 40% !important; font-size: 13px !important; }
+    .methodology-content { max-height: none !important; }
+
+    /* ── Empty state ───────────────────────────────────────────────── */
+    .empty-state  { padding: 40px 20px !important; margin: 20px auto !important; }
+    .empty-icon   { font-size: 56px !important; }
+    .empty-state h2 { font-size: 20px !important; }
+    .empty-state p  { font-size: 14px !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   761 – 1024px — планшеты
+   ═══════════════════════════════════════════════════════════════════ */
+@media (min-width: 761px) and (max-width: 1024px) {
+    .sidebar      { width: 72px !important; min-width: 72px !important; max-width: 72px !important; padding: 18px 10px !important; }
+    .side-label   { display: none !important; }
+    .side-brand   { height: 60px !important; }
+    .brand-script { font-size: 34px !important; }
+    .me-info      { display: none !important; }
+    .layout       { min-width: 0 !important; }
+    .main,
+    .main-content { min-width: 0 !important; padding: 20px !important; overflow-y: auto !important; }
+    .camps-grid,
+    .sessions-grid,
+    .detachments-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important; }
+    .dashboard    { grid-template-columns: 1fr !important; }
+    .col-side     { grid-template-columns: 1fr 1fr !important; }
+    .detachment-content-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   iOS safe area
+   ═══════════════════════════════════════════════════════════════════ */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    @media (max-width: 760px) {
+        .bottom-nav {
+            padding-bottom: calc(env(safe-area-inset-bottom) + 8px) !important;
+            height: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom)) !important;
+        }
+        .main,
+        .main-content,
+        .detachment-page-fullscreen {
+            padding-bottom: calc(var(--bottom-bar-h) + env(safe-area-inset-bottom) + 24px) !important;
+        }
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Отступ справа — чтобы контент не прилипал к краю экрана
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 760px) {
+    .detachment-page-fullscreen,
+    .main,
+    .main-content,
+    .ul-main,
+    .stats-main {
+        padding-right: 16px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Все панели и карточки внутри страницы отряда */
+    .counselors-panel,
+    .stages-panel-compact,
+    .methodology-panel,
+    .ai-panel,
+    .ai-chat-panel,
+    .children-panel,
+    .detachment-content-grid,
+    .left-section,
+    .right-section {
+        padding-right: 0 !important;  /* у них свой padding, не дублируем */
+        box-sizing: border-box !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        overflow: hidden !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Отступы внутри форм и модалок
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 760px) {
+
+    /* Модальные окна — внутренний padding */
+    .child-form-compact,
+    .counselor-form,
+    .child-view-content,
+    .counselors-list-content,
+    .delete-content,
+    .modal-content form {
+        padding: 16px 16px 16px 16px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Шапка модалки */
+    .modal-header-gradient {
+        padding: 20px 16px !important;
+    }
+
+    /* Поля ввода — полная ширина без выхода за край */
+    .form-group-compact input,
+    .form-group-compact select,
+    .form-group-compact textarea,
+    .counselor-uuid-input,
+    .counselor-role-select,
+    .parent-uuid-input,
+    .parent-relation-select,
+    .link-uuid-input,
+    .link-relation-select,
+    .re-link-uuid-input,
+    .re-link-relation-select,
+    .ai-chat-input input {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        max-width: 100% !important;
+    }
+
+    /* Группы инпутов — в колонку */
+    .parent-link-input-group,
+    .link-input-group,
+    .re-link-input-group {
+        flex-direction: column !important;
+    }
+
+    /* Блоки привязки родителей */
+    .parent-link-section,
+    .re-link-parent-block,
+    .link-parent-block {
+        padding: 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Кнопки действий в формах */
+    .re-link-submit-btn,
+    .link-submit-btn,
+    .re-link-cancel-btn {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Профиль — карточки */
+    .card {
+        padding: 16px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Онбординг */
+    .ob-card form,
+    .ob-card .form-group {
+        padding-right: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* AI чат инпут */
+    .ai-chat-input {
+        padding: 8px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Кнопки в модалках — полная ширина */
+    .modal-actions-compact {
+        padding: 0 16px 16px !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Отступы внутри панелей страницы отряда
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 760px) {
+
+    .counselors-panel,
+    .stages-panel-compact,
+    .methodology-panel,
+    .ai-panel,
+    .ai-chat-panel,
+    .children-panel {
+        padding: 12px 14px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* AI чат — внутренние элементы */
+    .ai-chat-input {
+        padding: 8px 10px !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+    }
+
+    .ai-chat-input input {
+        min-width: 0 !important;
+    }
+
+    .ai-chat-footer {
+        padding: 8px 4px 0 !important;
+    }
+
+    /* Кнопки этапов */
+    .stages-panel-compact .btn-next-stage,
+    .stages-panel-compact .btn-proceed {
+        margin-right: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Шапка вожатых и детей */
+    .counselors-header,
+    .panel-header {
+        padding-right: 0 !important;
+        box-sizing: border-box !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Этапы — уменьшаем подписи
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 760px) {
+    .stage-label {
+        font-size: 7px !important;
+        letter-spacing: -0.2px !important;
+        word-break: break-all !important;
+        line-height: 1.2 !important;
+    }
+
+    .stages-labels {
+        gap: 2px !important;
+    }
+
+    .current-stage-name {
+        font-size: 11px !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Роли — выравниваем высоту чипов и кнопки +
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 760px) {
+    .roles-inline > *,
+    .chip,
+    .role-badge,
+    .btn-icon.xs {
+        height: 32px !important;
+        line-height: 1 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        box-sizing: border-box !important;
+    }
+
+    .chip {
+        padding: 0 12px !important;
+        font-size: .85rem !important;
+    }
+
+    .role-badge {
+        padding: 0 10px !important;
+        font-size: .85rem !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Кнопка + добавить роль — квадратная
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 760px) {
+    .btn-icon.xs {
+        width: 32px !important;
+        min-width: 32px !important;
+        flex-shrink: 0 !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Кнопка + — принудительно квадратная (перебиваем inline-flex)
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 760px) {
+    .roles-inline .btn-icon.xs,
+    .roles-adder .btn-icon.xs {
+        width: 32px !important;
+        min-width: 32px !important;
+        max-width: 32px !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        padding: 0 !important;
+        flex: 0 0 32px !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Кнопка + — центрируем SVG внутри
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 760px) {
+    .roles-inline .btn-icon.xs,
+    .roles-adder .btn-icon.xs {
+        display: grid !important;
+        place-items: center !important;
+        line-height: 0 !important;
+    }
+
+    .roles-inline .btn-icon.xs svg,
+    .roles-adder .btn-icon.xs svg {
+        display: block !important;
+        margin: 0 !important;
+        flex-shrink: 0 !important;
+    }
+}

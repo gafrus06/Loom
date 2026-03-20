@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  auth-db:
+    image: postgres:17
+    container_name: filedb
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: filedb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+
+volumes:
+  auth-db-data:

@@ -1,0 +1,63 @@
+app:
+  cookie:
+    secure: false  # true ?? ????? (HTTPS), false ??? localhost
+spring:
+  application:
+    name: auth-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5437/authdb
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  jackson:
+    default-property-inclusion: non_null
+
+  kafka:
+    producer:
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    bootstrap-servers: localhost:9092
+
+  flyway:
+    enabled: false
+
+  task:
+    scheduling:
+      pool:
+        size: 2
+
+server:
+  port: 9510
+
+jwt:
+  secret: 9H6zJ6tXr0qv8J2Lr9+N3sYwGJ6gkA8v5Xq7mT+0O1Q=
+  access-token-validity-minutes: 1
+  refresh-token-validity-minutes: 10080
+
+yookassa:
+  shop-id: 1193643
+  secret-key: test_prW7i--eElWQkrh92J3WLGpHRZpg71_s1wA5e7tWJ4o
+  return-url: http://localhost:3000/subscription
+
+services:
+  camp-service:
+    url: http://localhost:9413
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+    registry-fetch-interval-seconds: 5
+  instance:
+    # ?? ????? ???????? ?? ???????? hostname/IP
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 15
