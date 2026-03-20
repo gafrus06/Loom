@@ -13,18 +13,6 @@ target/
 .springBeans
 .sts4-cache
 
-# Java
-target/
-build/
-
-
-# Node / React
-node_modules/
-dist/
-build/
-
-# Env
-.env
 ### IntelliJ IDEA ###
 .idea
 *.iws
@@ -43,4 +31,3 @@ build/
 
 ### VS Code ###
 .vscode/
-

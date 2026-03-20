@@ -1,0 +1,286 @@
+server:
+  port: 12717
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+          httpclient:
+            connect-timeout: 3000
+            response-timeout: 10s
+          max-request-body-size: 524288000   # 500 МБ — для загрузки видео
+
+          routes:
+            # Fallback — без CircuitBreaker, иначе петля
+            - id: fallback-route
+              uri: http://localhost:12717
+              predicates:
+                - Path=/fallback
+              filters:
+                - StripPrefix=0
+
+            - id: auth-service
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: auth-cb
+                    fallbackUri: forward:/fallback
+
+            - id: news-feed-service
+              uri: lb://news-feed-service
+              predicates:
+                - Path=/api/feed/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: news-feed-cb
+                    fallbackUri: forward:/fallback
+              metadata:
+                response-timeout: 120000
+                connect-timeout: 5000
+
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/users/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: user-cb
+                    fallbackUri: forward:/fallback
+
+            - id: file-storage-service
+              uri: lb://file-storage-service
+              predicates:
+                - Path=/api/files/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: file-cb
+                    fallbackUri: forward:/fallback
+
+            - id: notification-service
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/notifications/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: notification-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-camps
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/camps/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-sessions
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/sessions/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-detachments
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/detachments/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-children
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/children/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-memberships
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/memberships/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-parent-links
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/parent-links/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-counselor-assignments
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/counselor-assignments/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-audit-events
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/audit-events/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-audit
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/audit/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-camp-members
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/camp-members/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-applications
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/applications/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: auth-subscription
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth/subscription/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: auth-cb
+                    fallbackUri: forward:/fallback
+
+jwt:
+  secret: ${JWT_SECRET:9H6zJ6tXr0qv8J2Lr9+N3sYwGJ6gkA8v5Xq7mT+0O1Q=}
+
+app:
+  gateway:
+    public-paths:
+      - /api/auth/login
+      - /api/auth/register
+      - /api/auth/refresh
+      - /api/auth/subscription/webhook
+      - /actuator/health
+
+rate-limit:
+  replenish-rate: 100
+  burst-capacity: 300
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
+    # Кэш реестра обновляется каждые 5 секунд (по умолчанию 30)
+    registry-fetch-interval-seconds: 5
+  instance:
+    # Heartbeat каждые 5 секунд (по умолчанию 30)
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 15
+
+resilience4j:
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 15s
+    instances:
+      news-feed-cb:
+        timeout-duration: 120s   # загрузка видео может занять до 2 минут
+
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 20
+        failure-rate-threshold: 70
+        wait-duration-in-open-state: 10s
+        permittedNumberOfCallsInHalfOpenState: 5
+        minimumNumberOfCalls: 15
+        register-health-indicator: true
+        record-exceptions:
+          - java.io.IOException
+          - java.net.ConnectException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+    instances:
+      auth-cb:
+        base-config: default
+      news-feed-cb:
+        base-config: default
+      user-cb:
+        base-config: default
+      file-cb:
+        base-config: default
+      notification-cb:
+        base-config: default
+      camp-cb:
+        base-config: default
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
