@@ -17,11 +17,20 @@ public interface CampServiceClient {
     @GetMapping("/api/camps/{id}")
     CampDto getCamp(@PathVariable("id") UUID campId);
 
+    @PostMapping("/api/camps/bulk")
+    List<CampDto> getCamps(@RequestBody List<UUID> campIds);
+
+    @GetMapping("/api/camp-settings/camp/{campId}/posting-access")
+    CampPostingAccessDto getPostingAccess(@PathVariable("campId") UUID campId);
+
     @GetMapping("/api/camps/my-accessible")
     List<CampDto> getMyAccessibleCamps(@RequestParam("userId") UUID userId);
 
     @GetMapping("/api/detachments/{id}")
     DetachmentDto getDetachment(@PathVariable("id") UUID detachmentId);
+
+    @PostMapping("/api/detachments/bulk")
+    List<DetachmentDto> getDetachments(@RequestBody List<UUID> detachmentIds);
 
     @GetMapping("/api/parent-links/by-parent")
     List<ParentLinkDto> getMyChildren(@RequestParam("parentUserId") UUID parentUserId);

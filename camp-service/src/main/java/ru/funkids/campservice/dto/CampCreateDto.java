@@ -3,6 +3,8 @@ package ru.funkids.campservice.dto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import java.util.UUID;
+
 @Data
 public class CampCreateDto {
     @NotBlank(message = "Name is required")
@@ -10,4 +12,5 @@ public class CampCreateDto {
 
     private String location;
     private String description;
+    private UUID photoFileId;
 }

@@ -18,24 +18,13 @@ public interface CounselorAssignmentRepository extends JpaRepository<CounselorAs
 
     List<CounselorAssignment> findByUserIdAndActiveTrue(UUID userId);
 
-    /**
-     * Найти активное назначение конкретного вожатого в конкретный отряд.
-     * Используется в DetachmentSecurityService для определения роли
-     * (LEAD / ASSISTANT) и в DetachmentServiceImpl при исключении.
-     */
     Optional<CounselorAssignment> findByDetachmentIdAndUserIdAndActiveTrue(UUID detachmentId, UUID userId);
 
-    /**
-     * Найти все активные назначения по роли в отряде.
-     * Удобно для проверки: есть ли уже LEAD в отряде.
-     */
     List<CounselorAssignment> findByDetachmentIdAndRoleInDetachmentAndActiveTrue(
             UUID detachmentId, DetachmentRole roleInDetachment);
 
-    /**
-     * Найти все активные назначения вожатого в отрядах конкретного лагеря.
-     * Используется при исключении вожатого из лагеря — снять со всех отрядов.
-     */
     List<CounselorAssignment> findByUserIdAndDetachment_Session_Camp_IdAndActiveTrue(
             UUID userId, UUID campId);
+
+    List<CounselorAssignment> findByUserIdAndDetachment_Session_IdAndActiveTrue(UUID userId, UUID sessionId);
 }

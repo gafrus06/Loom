@@ -1,6 +1,7 @@
 package ru.funkids.campservice.service;
 
 import ru.funkids.campservice.dto.SessionCreateDto;
+import ru.funkids.campservice.dto.SessionContextDto;
 import ru.funkids.campservice.dto.SessionResponseDto;
 import ru.funkids.campservice.dto.SessionUpdateDto;
 import ru.funkids.campservice.dto.SessionWithRoleDto;
@@ -14,6 +15,7 @@ public interface SessionService {
     SessionResponseDto get(UUID id);
     List<SessionResponseDto> listByCamp(UUID campId);
     void delete(UUID id);
+    SessionContextDto getSessionContext(UUID sessionId, UUID userId);
 
     /**
      * Получить все доступные смены пользователя с учётом ролей:

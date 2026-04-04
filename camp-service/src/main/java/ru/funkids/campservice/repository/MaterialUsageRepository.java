@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import ru.funkids.campservice.entity.MaterialUsage;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,11 +25,16 @@ public interface MaterialUsageRepository extends JpaRepository<MaterialUsage, UU
     List<MaterialUsage> findByDetachmentIdAndMaterialTypeOrderByUsedAtDesc(
             UUID detachmentId, String materialType);
 
+    List<MaterialUsage> findByDetachmentIdAndMaterialIdIn(UUID detachmentId, Collection<UUID> materialIds);
+
     // Проверить, использован ли материал в отряде
     boolean existsByDetachmentIdAndMaterialId(UUID detachmentId, UUID materialId);
 
     // Получить количество использований материала
     long countByMaterialId(UUID materialId);
+
+    @Query("SELECT mu.materialId, COUNT(mu) FROM MaterialUsage mu WHERE mu.materialId IN :materialIds GROUP BY mu.materialId")
+    List<Object[]> countByMaterialIds(@Param("materialIds") Collection<UUID> materialIds);
 
     // Получить последнее использование материала в отряде
     @Query("SELECT mu FROM MaterialUsage mu WHERE mu.detachmentId = :detachmentId " +

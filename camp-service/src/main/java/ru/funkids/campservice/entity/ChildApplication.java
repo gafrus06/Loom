@@ -97,4 +97,7 @@ public class ChildApplication {
     @UpdateTimestamp
     @Column(nullable = false)
     private OffsetDateTime updatedAt;
+
+    @Version
+    private Long version;
 }

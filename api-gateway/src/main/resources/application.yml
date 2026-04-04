@@ -23,6 +23,20 @@ spring:
               filters:
                 - StripPrefix=0
 
+            # ─────────────────────────────────────────────────────────────────
+            # AUTH SERVICE
+            # ─────────────────────────────────────────────────────────────────
+            - id: auth-subscription
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth/subscription/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: auth-cb
+                    fallbackUri: forward:/fallback
+
             - id: auth-service
               uri: lb://auth-service
               predicates:
@@ -34,6 +48,9 @@ spring:
                     name: auth-cb
                     fallbackUri: forward:/fallback
 
+            # ─────────────────────────────────────────────────────────────────
+            # NEWS FEED SERVICE
+            # ─────────────────────────────────────────────────────────────────
             - id: news-feed-service
               uri: lb://news-feed-service
               predicates:
@@ -48,6 +65,9 @@ spring:
                 response-timeout: 120000
                 connect-timeout: 5000
 
+            # ─────────────────────────────────────────────────────────────────
+            # USER SERVICE
+            # ─────────────────────────────────────────────────────────────────
             - id: user-service
               uri: lb://user-service
               predicates:
@@ -59,6 +79,9 @@ spring:
                     name: user-cb
                     fallbackUri: forward:/fallback
 
+            # ─────────────────────────────────────────────────────────────────
+            # FILE STORAGE SERVICE
+            # ─────────────────────────────────────────────────────────────────
             - id: file-storage-service
               uri: lb://file-storage-service
               predicates:
@@ -70,6 +93,9 @@ spring:
                     name: file-cb
                     fallbackUri: forward:/fallback
 
+            # ─────────────────────────────────────────────────────────────────
+            # NOTIFICATION SERVICE
+            # ─────────────────────────────────────────────────────────────────
             - id: notification-service
               uri: lb://notification-service
               predicates:
@@ -81,6 +107,9 @@ spring:
                     name: notification-cb
                     fallbackUri: forward:/fallback
 
+            # ─────────────────────────────────────────────────────────────────
+            # CAMP SERVICE — Core
+            # ─────────────────────────────────────────────────────────────────
             - id: camp-service-camps
               uri: lb://camp-service
               predicates:
@@ -158,28 +187,6 @@ spring:
                     name: camp-cb
                     fallbackUri: forward:/fallback
 
-            - id: camp-service-audit-events
-              uri: lb://camp-service
-              predicates:
-                - Path=/api/audit-events/**
-              filters:
-                - StripPrefix=0
-                - name: CircuitBreaker
-                  args:
-                    name: camp-cb
-                    fallbackUri: forward:/fallback
-
-            - id: camp-service-audit
-              uri: lb://camp-service
-              predicates:
-                - Path=/api/audit/**
-              filters:
-                - StripPrefix=0
-                - name: CircuitBreaker
-                  args:
-                    name: camp-cb
-                    fallbackUri: forward:/fallback
-
             - id: camp-service-camp-members
               uri: lb://camp-service
               predicates:
@@ -202,19 +209,157 @@ spring:
                     name: camp-cb
                     fallbackUri: forward:/fallback
 
-            - id: auth-subscription
-              uri: lb://auth-service
+            # ─────────────────────────────────────────────────────────────────
+            # CAMP SERVICE — Audit
+            # ─────────────────────────────────────────────────────────────────
+            - id: camp-service-audit-events
+              uri: lb://camp-service
               predicates:
-                - Path=/api/auth/subscription/**
+                - Path=/api/audit-events/**
               filters:
                 - StripPrefix=0
                 - name: CircuitBreaker
                   args:
-                    name: auth-cb
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            - id: camp-service-audit
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/audit/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            # ─────────────────────────────────────────────────────────────────
+            # CAMP SERVICE — NEW controllers
+            # ─────────────────────────────────────────────────────────────────
+
+            # CalendarEventController  → /api/calendar-events/**
+            - id: camp-service-calendar-events
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/calendar-events/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            # CampAnalyticsController  → /api/analytics/**
+            - id: camp-service-analytics
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/analytics/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            # CampMessageController  → /api/camp-messages/**
+            - id: camp-service-camp-messages
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/camp-messages/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            # CampSettingsController  → /api/camp-settings/**
+            - id: camp-service-camp-settings
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/camp-settings/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            # DetachmentJournalController  → /api/detachment-journals/**
+            - id: camp-service-detachment-journals
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/detachment-journals/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            # ParentDetachmentViewController  → /api/parent-detachments/**
+            - id: camp-service-parent-detachments
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/parent-detachments/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            # SeniorCounselorNoticeController  → /api/senior-notices/**
+            - id: camp-service-senior-notices
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/senior-notices/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            # ShiftReportController  → /api/shift-report-templates/**
+            - id: camp-service-shift-report-templates
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/shift-report-templates/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            # ShiftReportController  → /api/detachment-daily-reports/**
+            - id: camp-service-detachment-daily-reports
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/detachment-daily-reports/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
+                    fallbackUri: forward:/fallback
+
+            # ShiftTaskController  → /api/shift-tasks/**
+            - id: camp-service-shift-tasks
+              uri: lb://camp-service
+              predicates:
+                - Path=/api/shift-tasks/**
+              filters:
+                - StripPrefix=0
+                - name: CircuitBreaker
+                  args:
+                    name: camp-cb
                     fallbackUri: forward:/fallback
 
 jwt:
-  secret: ${JWT_SECRET:9H6zJ6tXr0qv8J2Lr9+N3sYwGJ6gkA8v5Xq7mT+0O1Q=}
+  secret: ${JWT_SECRET:c2VjcmV0Y2hhbmdlLW1lLWRldi1zZWNyZXQtZm9yLWxvY2FsLTAxMjM0NTY3ODkw}
 
 app:
   gateway:
@@ -222,12 +367,19 @@ app:
       - /api/auth/login
       - /api/auth/register
       - /api/auth/refresh
+      - /api/auth/logout
       - /api/auth/subscription/webhook
       - /actuator/health
 
 rate-limit:
   replenish-rate: 100
   burst-capacity: 300
+
+internal-auth:
+  secret: ${INTERNAL_AUTH_SECRET:dev-internal-secret}
+  token-version-cache:
+    ttl-seconds: 5
+    max-size: 10000
 
 eureka:
   client:

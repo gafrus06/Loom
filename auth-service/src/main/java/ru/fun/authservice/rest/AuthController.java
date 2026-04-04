@@ -11,15 +11,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import ru.fun.authservice.dto.*;
-import ru.fun.authservice.entity.Role;
-import ru.fun.authservice.entity.User;
+import ru.fun.authservice.entity.UserRole;
 import ru.fun.authservice.security.GatewayUserPrincipal;
+import ru.fun.authservice.security.InternalRequestVerifier;
 import ru.fun.authservice.service.AuthService;
 
 import java.util.Arrays;
-import java.util.Set;
+import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -28,11 +27,10 @@ import java.util.stream.Collectors;
 public class AuthController {
 
     private final AuthService authService;
+    private final InternalRequestVerifier internalRequestVerifier;
 
     @Value("${app.cookie.secure:true}")
     private boolean cookieSecure;
-
-    // ── Публичные эндпоинты ──────────────────────────────────────────
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<String>> register(@RequestBody RegisterRequest request) {
@@ -43,25 +41,21 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> login(
             @RequestBody LoginRequest request,
-            HttpServletResponse response
-    ) {
+            HttpServletResponse response) {
         AuthService.LoginResult result = authService.login(request.getEmail(), request.getPassword());
         setRefreshCookie(response, result.refreshToken());
-        // В теле возвращаем ТОЛЬКО access token — refresh фронт не видит
         return ResponseEntity.ok(new JwtResponse(result.accessToken()));
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<JwtResponse> refresh(
             HttpServletRequest request,
-            HttpServletResponse response
-    ) {
+            HttpServletResponse response) {
         String refreshToken = extractRefreshCookie(request);
         if (refreshToken == null) {
             return ResponseEntity.status(401).build();
         }
         AuthService.LoginResult result = authService.refresh(refreshToken);
-        // Rotation — каждый раз новый refresh токен
         setRefreshCookie(response, result.refreshToken());
         return ResponseEntity.ok(new JwtResponse(result.accessToken()));
     }
@@ -69,8 +63,7 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             HttpServletRequest request,
-            HttpServletResponse response
-    ) {
+            HttpServletResponse response) {
         String refreshToken = extractRefreshCookie(request);
         if (refreshToken != null) {
             authService.logout(refreshToken);
@@ -79,71 +72,98 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-    // ── Защищённые эндпоинты ─────────────────────────────────────────
-
-    @GetMapping("/users/{id}/roles")
-    public ResponseEntity<UserRoleResponse> getUserRoles(@PathVariable UUID id) {
-        User user = authService.getUserById(id);
-        Set<String> roles = user.getRoles().stream()
-                .map(Role::getName)
-                .collect(Collectors.toSet());
-        return ResponseEntity.ok(new UserRoleResponse(user.getEmail(), roles));
+    @GetMapping("/users/{userId}/roles")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN') or #userId.toString() == principal.rawId")
+    public ResponseEntity<UserRolesResponse> getUserRoles(@PathVariable UUID userId) {
+        List<UserRole> roles = authService.getActiveRoles(userId);
+        List<UserRoleDto> roleDtos = roles.stream()
+                .map(ur -> new UserRoleDto(
+                        ur.getId(),
+                        ur.getRole(),
+                        ur.getAssignedByUserId(),
+                        ur.getAssignedAt()
+                ))
+                .toList();
+        return ResponseEntity.ok(new UserRolesResponse(userId, roleDtos));
     }
 
-    @PostMapping("/assign-role")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('COUNSELOR')")
+    @PostMapping("/users/{targetUserId}/roles")
+    @PreAuthorize("hasAnyRole('COUNSELOR', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<String>> assignRole(
+            @PathVariable UUID targetUserId,
             @RequestBody AssignRoleRequest request,
-            @AuthenticationPrincipal GatewayUserPrincipal currentUser
-    ) {
-        User user = authService.findUserByEmail(currentUser.getUsername());
-        authService.assignRole(request.getEmail(), request.getRole(), user);
+            @AuthenticationPrincipal GatewayUserPrincipal currentUser) {
+        authService.assignRole(targetUserId, request.role(), currentUser.getUserId());
         return ResponseEntity.ok(new ApiResponse<>(
-                "Role " + request.getRole() + " assigned to " + request.getEmail()
-        ));
-    }
-
-    @PreAuthorize("hasRole('ADMIN') or #userId.toString() == principal.rawId")
-    @PostMapping("/force-refresh/{userId}")
-    public ResponseEntity<JwtResponse> forceRefresh(
-            @PathVariable UUID userId,
-            HttpServletResponse response
-    ) {
-        AuthService.LoginResult result = authService.generateTokens(authService.getUserById(userId));
-        setRefreshCookie(response, result.refreshToken());
-        return ResponseEntity.ok(new JwtResponse(result.accessToken()));
-    }
-
-    @DeleteMapping("/users/{userId}/roles/{role}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<String>> removeRole(
-            @PathVariable UUID userId,
-            @PathVariable String role
-    ) {
-        authService.removeRoleById(userId, role);
-        return ResponseEntity.ok(new ApiResponse<>("Role " + role + " removed from " + userId));
+                "Role " + request.role() + " assigned to userId=" + targetUserId));
     }
 
     @PostMapping("/internal/assign-role")
     public ResponseEntity<ApiResponse<String>> internalAssignRole(
             @RequestBody InternalAssignRoleRequest request,
-            @RequestHeader(value = "X-Internal-Secret", required = false) String secret
-    ) {
-        String expectedSecret = System.getenv("INTERNAL_SERVICE_SECRET");
-        if (expectedSecret == null) expectedSecret = "camp-service-secret-2024";
-        if (!expectedSecret.equals(secret)) {
-            return ResponseEntity.status(403).body(new ApiResponse<>("Forbidden"));
-        }
-        authService.assignRoleById(request.userId(), request.role());
+            HttpServletRequest httpServletRequest) {
+        internalRequestVerifier.requireVerifiedInternalCaller(httpServletRequest);
+        authService.assignRoleInternal(request.userId(), request.role());
         return ResponseEntity.ok(new ApiResponse<>(
-                "Role " + request.role() + " assigned to " + request.userId()
-        ));
+                "Role " + request.role() + " assigned to userId=" + request.userId()));
     }
 
-    // ── Cookie helpers ───────────────────────────────────────────────
+    @GetMapping("/internal/users/{userId}/token-version")
+    public ResponseEntity<TokenVersionResponse> getTokenVersion(
+            @PathVariable UUID userId,
+            HttpServletRequest httpServletRequest) {
+        internalRequestVerifier.requireVerifiedInternalCaller(httpServletRequest);
+        return ResponseEntity.ok(new TokenVersionResponse(userId, authService.getCurrentTokenVersion(userId)));
+    }
+
+    @DeleteMapping("/users/{targetUserId}/roles/{role}")
+    @PreAuthorize("hasAnyRole('COUNSELOR', 'ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<String>> removeRole(
+            @PathVariable UUID targetUserId,
+            @PathVariable String role,
+            @AuthenticationPrincipal GatewayUserPrincipal currentUser) {
+        authService.removeRole(targetUserId, role, currentUser.getUserId());
+        return ResponseEntity.ok(new ApiResponse<>(
+                "Role " + role + " removed from userId=" + targetUserId));
+    }
+
+    @PostMapping("/users/{userId}/force-refresh")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or #userId.toString() == principal.rawId")
+    public ResponseEntity<JwtResponse> forceRefresh(
+            @PathVariable UUID userId,
+            HttpServletResponse response) {
+        AuthService.LoginResult result = authService.forceRefresh(userId);
+        setRefreshCookie(response, result.refreshToken());
+        return ResponseEntity.ok(new JwtResponse(result.accessToken()));
+    }
+
+    @PostMapping("/users/{userId}/logout-all")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or #userId.toString() == principal.rawId")
+    public ResponseEntity<ApiResponse<String>> logoutAll(@PathVariable UUID userId) {
+        authService.logoutAll(userId);
+        return ResponseEntity.ok(new ApiResponse<>("All sessions revoked for userId=" + userId));
+    }
+
+    @PostMapping("/users/{targetUserId}/deactivate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<String>> deactivateUser(
+            @PathVariable UUID targetUserId,
+            @AuthenticationPrincipal GatewayUserPrincipal currentUser) {
+        authService.deactivateUser(targetUserId, currentUser.getUserId());
+        return ResponseEntity.ok(new ApiResponse<>("User " + targetUserId + " deactivated"));
+    }
+
+    @PostMapping("/users/{targetUserId}/activate")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<String>> activateUser(
+            @PathVariable UUID targetUserId,
+            @AuthenticationPrincipal GatewayUserPrincipal currentUser) {
+        authService.activateUser(targetUserId, currentUser.getUserId());
+        return ResponseEntity.ok(new ApiResponse<>("User " + targetUserId + " activated"));
+    }
 
     private void setRefreshCookie(HttpServletResponse response, String refreshToken) {
-        int maxAge = 30 * 24 * 60 * 60; // 30 дней
+        int maxAge = 30 * 24 * 60 * 60;
         response.addHeader("Set-Cookie", String.format(
                 "refresh_token=%s; Path=/api/auth; HttpOnly; %sSameSite=Strict; Max-Age=%d",
                 refreshToken,

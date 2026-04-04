@@ -2,7 +2,6 @@ package ru.funkids.campservice.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -137,18 +136,32 @@ public class MaterialServiceImpl implements MaterialService {
     }
 
     private List<MaterialWithUsageDto> enrichWithUsageInfo(List<MaterialDto> materials, UUID detachmentId) {
+        if (materials.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> materialIds = materials.stream().map(MaterialDto::getId).toList();
+        List<MaterialUsage> usages = materialUsageRepository.findByDetachmentIdAndMaterialIdIn(detachmentId, materialIds);
+        Set<UUID> usedMaterialIds = usages.stream()
+                .map(MaterialUsage::getMaterialId)
+                .collect(Collectors.toSet());
+        Map<UUID, OffsetDateTime> lastUsedByMaterial = usages.stream()
+                .collect(Collectors.toMap(
+                        MaterialUsage::getMaterialId,
+                        MaterialUsage::getUsedAt,
+                        (left, right) -> left.isAfter(right) ? left : right
+                ));
+        Map<UUID, Long> usageCounts = materialUsageRepository.countByMaterialIds(materialIds).stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1]
+                ));
+
         return materials.stream()
                 .map(material -> {
-                    boolean isUsed = materialUsageRepository.existsByDetachmentIdAndMaterialId(
-                            detachmentId, material.getId());
-
-                    // Получаем последнее использование
-                    List<MaterialUsage> usages = materialUsageRepository.findLastUsage(
-                            detachmentId, material.getId(), PageRequest.of(0, 1));
-
-                    OffsetDateTime lastUsedAt = usages.isEmpty() ? null : usages.get(0).getUsedAt();
-
-                    long usageCount = materialUsageRepository.countByMaterialId(material.getId());
+                    boolean isUsed = usedMaterialIds.contains(material.getId());
+                    OffsetDateTime lastUsedAt = lastUsedByMaterial.get(material.getId());
+                    long usageCount = usageCounts.getOrDefault(material.getId(), 0L);
 
                     return MaterialWithUsageDto.builder()
                             .id(material.getId())
@@ -278,15 +291,14 @@ public class MaterialServiceImpl implements MaterialService {
         List<MaterialUsage> usages = materialUsageRepository
                 .findByDetachmentIdOrderByUsedAtDesc(detachmentId);
 
-        List<MaterialUsageDto> result = new ArrayList<>();
+        Map<UUID, String> titlesById = materialRepository.findAllById(
+                        usages.stream().map(MaterialUsage::getMaterialId).distinct().toList()
+                ).stream()
+                .collect(Collectors.toMap(Material::getId, Material::getTitle));
 
-        for (MaterialUsage usage : usages) {
-            materialRepository.findById(usage.getMaterialId())
-                    .ifPresent(material ->
-                            result.add(mapToUsageDto(usage, material.getTitle())));
-        }
-
-        return result;
+        return usages.stream()
+                .map(usage -> mapToUsageDto(usage, titlesById.get(usage.getMaterialId())))
+                .collect(Collectors.toList());
     }
 
     @Override

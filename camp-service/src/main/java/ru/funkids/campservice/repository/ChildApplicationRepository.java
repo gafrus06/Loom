@@ -1,26 +1,24 @@
 package ru.funkids.campservice.repository;
 
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
-import ru.funkids.campservice.entity.CampInviteCode;
-import ru.funkids.campservice.entity.ChildApplication;
 import ru.funkids.campservice.entity.ApplicationStatus;
+import ru.funkids.campservice.entity.ChildApplication;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface ChildApplicationRepository extends JpaRepository<ChildApplication, UUID> {
 
-    /** Все заявки по лагерю с нужным статусом — для вожатого */
-    List<ChildApplication> findByCampIdAndStatusOrderByLastNameAscFirstNameAsc(
-            UUID campId, ApplicationStatus status);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    java.util.Optional<ChildApplication> findWithLockById(UUID id);
 
-    /** Все заявки родителя в конкретном лагере */
+    List<ChildApplication> findByCampIdAndStatusOrderByLastNameAscFirstNameAsc(UUID campId, ApplicationStatus status);
+
     List<ChildApplication> findByCampIdAndParentUserId(UUID campId, UUID parentUserId);
 
-    /** Проверка что у родителя уже есть заявка в этом лагере */
     boolean existsByCampIdAndParentUserId(UUID campId, UUID parentUserId);
+
+    long countByCampIdAndStatus(UUID campId, ApplicationStatus status);
 }
-
-
-

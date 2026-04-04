@@ -1,6 +1,7 @@
 package ru.funkids.newsfeedservice.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,9 +24,11 @@ public class PostResponse {
     private DetachmentInfo detachment;
     private String title;
     private String content;
+    private JsonNode contentJson;
     private List<MediaInfo> media;
     private PostStats stats;
     private UserInteraction userInteraction;
+    private String moderationStatus;
     // Примитив boolean, а не Boolean — с @JsonInclude(NON_NULL) обёртка Boolean(false)
     // сериализовалась бы, но явный примитив надёжнее и не допускает null.
     private boolean isPinned;

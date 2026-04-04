@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import "../styles/confirm-modal.css";
+import "./ConfirmModal.css";
 
 /**
  * Кастомный диалог подтверждения.

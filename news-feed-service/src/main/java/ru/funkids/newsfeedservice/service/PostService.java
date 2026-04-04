@@ -5,38 +5,38 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 import ru.funkids.newsfeedservice.client.CampServiceClient;
 import ru.funkids.newsfeedservice.client.FileStorageClient;
 import ru.funkids.newsfeedservice.client.UserServiceClient;
 import ru.funkids.newsfeedservice.config.RedisConfig;
-import ru.funkids.newsfeedservice.dto.client.*;
+import ru.funkids.newsfeedservice.dto.client.CampDto;
+import ru.funkids.newsfeedservice.dto.client.CampPostingAccessDto;
+import ru.funkids.newsfeedservice.dto.client.DetachmentDto;
 import ru.funkids.newsfeedservice.dto.client.DownloadUrlsRequest;
-import java.util.Objects;
+import ru.funkids.newsfeedservice.dto.client.UserProfileDto;
 import ru.funkids.newsfeedservice.dto.request.CreatePostRequest;
 import ru.funkids.newsfeedservice.dto.request.UpdatePostRequest;
 import ru.funkids.newsfeedservice.dto.response.PageResponse;
 import ru.funkids.newsfeedservice.dto.response.PostResponse;
 import ru.funkids.newsfeedservice.entity.Post;
 import ru.funkids.newsfeedservice.entity.PostMedia;
+import ru.funkids.newsfeedservice.entity.PostModerationStatus;
 import ru.funkids.newsfeedservice.exception.ForbiddenException;
 import ru.funkids.newsfeedservice.exception.ResourceNotFoundException;
 import ru.funkids.newsfeedservice.mapper.PostMapper;
 import ru.funkids.newsfeedservice.repository.LikeRepository;
 import ru.funkids.newsfeedservice.repository.PostRepository;
-import ru.funkids.newsfeedservice.service.VideoUtils;
 import ru.funkids.newsfeedservice.security.SecurityUtils;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -47,87 +47,82 @@ import java.util.stream.Collectors;
 @Transactional
 public class PostService {
 
-    private final PostRepository    postRepository;
-    private final LikeRepository    likeRepository;
+    private final PostRepository postRepository;
+    private final LikeRepository likeRepository;
     private final CampServiceClient campServiceClient;
     private final UserServiceClient userServiceClient;
     private final FileStorageClient fileStorageClient;
-    private final PostMapper        postMapper;
-
-    // ─── СОЗДАНИЕ ────────────────────────────────────────────────────────────
+    private final PostMapper postMapper;
 
     @CacheEvict(value = {RedisConfig.CacheNames.FEED, RedisConfig.CacheNames.POST}, allEntries = true)
-    public PostResponse createPost(CreatePostRequest request, List<MultipartFile> images, List<MultipartFile> videos) {
+    public PostResponse createPost(CreatePostRequest request) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        String userRole    = SecurityUtils.getCurrentUserRole();
+        String userRole = SecurityUtils.getCurrentUserRole();
 
         if (!isAdminOrCounselor(userRole)) {
             throw new ForbiddenException("Only counselors and admins can create posts");
         }
 
-        // Проверяем существование лагеря через Eureka (по имени сервиса, не IP)
-        try {
-            campServiceClient.getCamp(request.getCampId());
-        } catch (Exception e) {
-            throw new ResourceNotFoundException("Camp not found: " + request.getCampId());
+        CampPostingAccessDto access = loadPostingAccess(request.getCampId());
+        if (!access.isCampOwner() && !access.isAcceptedStaff()) {
+            throw new ForbiddenException("You must be assigned to the camp to create posts");
         }
 
         Post post = postMapper.toEntity(request);
         post.setAuthorId(currentUserId);
-        Post savedPost = postRepository.save(post);
+        post.setModerationStatus(resolveInitialStatus(access, isAdmin(userRole)));
 
-        if (images != null && !images.isEmpty()) {
-            attachMedia(savedPost, images, "IMAGE");
-        }
-        if (videos != null && !videos.isEmpty()) {
-            attachMedia(savedPost, videos, "VIDEO");
-        }
+        Post savedPost = postRepository.save(post);
+        attachUploadedMedia(savedPost, request.getImageFileIds(), "IMAGE");
+        attachUploadedMedia(savedPost, request.getVideoFileIds(), "VIDEO");
 
         Post finalPost = postRepository.save(savedPost);
         log.info("Post created id={} by userId={}", finalPost.getId(), currentUserId);
-
         return buildSinglePostResponse(finalPost, currentUserId);
     }
 
-    // ─── ОБНОВЛЕНИЕ ──────────────────────────────────────────────────────────
-
     @CacheEvict(value = {RedisConfig.CacheNames.FEED, RedisConfig.CacheNames.POST}, allEntries = true)
-    public PostResponse updatePost(UUID postId, UpdatePostRequest request, List<MultipartFile> newImages, List<MultipartFile> newVideos) {
-        UUID   currentUserId = SecurityUtils.getCurrentUserId();
-        String userRole      = SecurityUtils.getCurrentUserRole();
+    public PostResponse updatePost(UUID postId, UpdatePostRequest request) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        String userRole = SecurityUtils.getCurrentUserRole();
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
 
-        if (!post.getAuthorId().equals(currentUserId) && !isAdmin(userRole)) {
-            throw new ForbiddenException("You can only edit your own posts");
+        boolean authorEditing = post.getAuthorId().equals(currentUserId);
+        CampPostingAccessDto access = null;
+
+        if (!authorEditing && !isAdmin(userRole)) {
+            access = campServiceClient.getPostingAccess(post.getCampId());
+            if (!access.isCanModeratePosts()) {
+                throw new ForbiddenException("You can only edit your own posts");
+            }
         }
 
         postMapper.updateEntity(post, request);
+        if (authorEditing && !isAdmin(userRole)) {
+            if (access == null) {
+                access = campServiceClient.getPostingAccess(post.getCampId());
+            }
+            post.setModerationStatus(resolveInitialStatus(access, false));
+        }
 
         if (request.getMediaIdsToDelete() != null && !request.getMediaIdsToDelete().isEmpty()) {
             post.getMedia().removeIf(m -> request.getMediaIdsToDelete().contains(m.getId()));
         }
 
-        if (newImages != null && !newImages.isEmpty()) {
-            attachMedia(post, newImages, "IMAGE");
-        }
-        if (newVideos != null && !newVideos.isEmpty()) {
-            attachMedia(post, newVideos, "VIDEO");
-        }
+        attachUploadedMedia(post, request.getNewImageFileIds(), "IMAGE");
+        attachUploadedMedia(post, request.getNewVideoFileIds(), "VIDEO");
 
         Post updated = postRepository.save(post);
         log.info("Post updated id={}", postId);
-
         return buildSinglePostResponse(updated, currentUserId);
     }
 
-    // ─── УДАЛЕНИЕ ────────────────────────────────────────────────────────────
-
     @CacheEvict(value = {RedisConfig.CacheNames.FEED, RedisConfig.CacheNames.POST}, allEntries = true)
     public void deletePost(UUID postId) {
-        UUID   currentUserId = SecurityUtils.getCurrentUserId();
-        String userRole      = SecurityUtils.getCurrentUserRole();
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        String userRole = SecurityUtils.getCurrentUserRole();
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
@@ -141,21 +136,17 @@ public class PostService {
         log.info("Post deleted id={}", postId);
     }
 
-    // ─── ЧТЕНИЕ ОДНОГО ПОСТА ─────────────────────────────────────────────────
-
-    @Cacheable(value = RedisConfig.CacheNames.POST, key = "#postId")
+    @Cacheable(
+            value = RedisConfig.CacheNames.POST,
+            key = "#postId + ':' + T(ru.funkids.newsfeedservice.security.SecurityUtils).getCurrentUserId()"
+    )
     @Transactional(readOnly = true)
     public PostResponse getPost(UUID postId) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-
-        // EntityGraph — media загружается одним JOIN, не N+1
         Post post = postRepository.findWithMediaById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
-
         return buildSinglePostResponse(post, currentUserId);
     }
-
-    // ─── ЗАКРЕПЛЕНИЕ ─────────────────────────────────────────────────────────
 
     @CacheEvict(value = {RedisConfig.CacheNames.FEED, RedisConfig.CacheNames.POST}, allEntries = true)
     public PostResponse togglePin(UUID postId, boolean pin) {
@@ -169,77 +160,80 @@ public class PostService {
         post.setPinned(pin);
         post.setPinnedOrder(pin ? (int) System.currentTimeMillis() : null);
         Post updated = postRepository.save(post);
-
         return buildSinglePostResponse(updated, SecurityUtils.getCurrentUserId());
     }
 
-    // ─── BATCH-ПОСТРОЕНИЕ СТРАНИЦЫ ОТВЕТОВ (без N+1) ────────────────────────
+    @CacheEvict(value = {RedisConfig.CacheNames.FEED, RedisConfig.CacheNames.POST}, allEntries = true)
+    public PostResponse approvePost(UUID postId) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
 
-    /**
-     * Принимает страницу постов и строит PageResponse<PostResponse> за
-     * константное число запросов независимо от размера страницы.
-     *
-     * Запросы:
-     *  1. Уже выполненный SELECT posts (+ media через @BatchSize)
-     *  2. SELECT likes count   WHERE post_id IN (...)   — один запрос
-     *  3. SELECT liked_post_ids WHERE post_id IN (...)  — один запрос
-     *  4. Feign: getUsers      для уникальных authorId  — один запрос (или N по авторам, но авторов мало)
-     *  5. Feign: getCamps      для уникальных campId    — один запрос
-     *  6. Feign: getDetachments для уникальных detachmentId — один запрос
-     *
-     * Итого: O(1) запросов к БД + O(уникальные_сущности) Feign-запросов.
-     */
+        ensureCanModerate(post.getCampId());
+        post.setModerationStatus(PostModerationStatus.PUBLISHED);
+        return buildSinglePostResponse(postRepository.save(post), currentUserId);
+    }
+
+    @CacheEvict(value = {RedisConfig.CacheNames.FEED, RedisConfig.CacheNames.POST}, allEntries = true)
+    public PostResponse rejectPost(UUID postId) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
+
+        ensureCanModerate(post.getCampId());
+        post.setModerationStatus(PostModerationStatus.REJECTED);
+        post.setPinned(false);
+        post.setPinnedOrder(null);
+        return buildSinglePostResponse(postRepository.save(post), currentUserId);
+    }
+
     @Transactional(readOnly = true)
     public PageResponse<PostResponse> buildPageResponse(Page<Post> posts, UUID currentUserId) {
         if (posts.isEmpty()) {
-            return new PageResponse<>(posts.map(p -> null)); // пустая страница
+            return new PageResponse<>(posts.map(p -> null));
         }
 
         List<Post> content = posts.getContent();
         Set<UUID> postIds = content.stream().map(Post::getId).collect(Collectors.toSet());
-
-        // 1. Batch-счётчики лайков
         Map<UUID, Long> likesCountMap = likeRepository.countMapByPostIds(postIds);
-
-        // 2. Batch: какие посты лайкнул текущий пользователь
         Set<UUID> likedByUser = currentUserId != null
                 ? likeRepository.findLikedPostIds(postIds, currentUserId)
                 : Set.of();
 
-        // 3. Уникальные authorId → один или несколько Feign-вызовов (мало уникальных авторов)
-        Set<UUID> authorIds = content.stream().map(Post::getAuthorId).collect(Collectors.toSet());
-        Map<UUID, UserProfileDto> authorMap = loadAuthors(authorIds);
-
-        // 4. Уникальные campId
-        Set<UUID> campIds = content.stream().map(Post::getCampId).collect(Collectors.toSet());
-        Map<UUID, CampDto> campMap = loadCamps(campIds);
-
-        // 5. Уникальные detachmentId (только не-null)
-        Set<UUID> detachmentIds = content.stream()
+        Map<UUID, UserProfileDto> authorMap = loadAuthors(content.stream().map(Post::getAuthorId).collect(Collectors.toSet()));
+        Map<UUID, CampDto> campMap = loadCamps(content.stream().map(Post::getCampId).collect(Collectors.toSet()));
+        Map<UUID, DetachmentDto> detachmentMap = loadDetachments(content.stream()
                 .map(Post::getDetachmentId)
                 .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<UUID, DetachmentDto> detachmentMap = loadDetachments(detachmentIds);
+                .collect(Collectors.toSet()));
 
-        Page<PostResponse> responsePage = posts.map(post ->
-                postMapper.toResponse(post, authorMap, campMap, detachmentMap, likesCountMap, likedByUser));
-
-        return new PageResponse<>(responsePage);
+        return new PageResponse<>(posts.map(post ->
+                postMapper.toResponse(post, authorMap, campMap, detachmentMap, likesCountMap, likedByUser)));
     }
 
-    // ─── ЗАГРУЗКА ВНЕШНИХ ДАННЫХ ЧЕРЕЗ EUREKA/FEIGN ───────────────────────────
+    private CampPostingAccessDto loadPostingAccess(UUID campId) {
+        try {
+            campServiceClient.getCamp(campId);
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("Camp not found: " + campId);
+        }
+        return campServiceClient.getPostingAccess(campId);
+    }
 
     private Map<UUID, UserProfileDto> loadAuthors(Set<UUID> authorIds) {
         Map<UUID, UserProfileDto> result = new HashMap<>();
-        for (UUID id : authorIds) {
-            try {
-                result.put(id, userServiceClient.getUserProfile(id));
-            } catch (Exception e) {
-                log.warn("Failed to load author id={}: {}", id, e.getMessage());
-            }
+        if (authorIds.isEmpty()) {
+            return result;
         }
-        // Подгружаем presigned URL аватарок одним batch-запросом к file-storage-service.
-        // Собираем только ненулевые avatarFileId, запрашиваем все URL за раз.
+
+        try {
+            userServiceClient.getUserProfiles(new ArrayList<>(authorIds))
+                    .forEach(profile -> result.put(profile.getId(), profile));
+        } catch (Exception e) {
+            log.warn("Failed to load authors in bulk: {}", e.getMessage());
+            return result;
+        }
+
         Set<UUID> avatarFileIds = result.values().stream()
                 .map(UserProfileDto::getAvatarFileId)
                 .filter(Objects::nonNull)
@@ -247,128 +241,95 @@ public class PostService {
 
         if (!avatarFileIds.isEmpty()) {
             try {
-                DownloadUrlsRequest req = new DownloadUrlsRequest();
-                req.setFileIds(new java.util.ArrayList<>(avatarFileIds));
-                Map<UUID, String> avatarUrls = fileStorageClient.getDownloadUrls(req).getUrls();
+                DownloadUrlsRequest request = new DownloadUrlsRequest();
+                request.setFileIds(new ArrayList<>(avatarFileIds));
+                Map<UUID, String> avatarUrls = fileStorageClient.getDownloadUrls(request).getUrls();
                 result.values().forEach(profile -> {
                     if (profile.getAvatarFileId() != null) {
-                        String url = avatarUrls.get(profile.getAvatarFileId());
-                        if (url != null) profile.setAvatarUrl(url);
+                        String avatarUrl = avatarUrls.get(profile.getAvatarFileId());
+                        if (avatarUrl != null) {
+                            profile.setAvatarUrl(avatarUrl);
+                        }
                     }
                 });
             } catch (Exception e) {
                 log.warn("Failed to load avatar URLs: {}", e.getMessage());
             }
         }
+
         return result;
     }
 
     private Map<UUID, CampDto> loadCamps(Set<UUID> campIds) {
-        Map<UUID, CampDto> result = new HashMap<>();
-        for (UUID id : campIds) {
-            try {
-                result.put(id, campServiceClient.getCamp(id));
-            } catch (Exception e) {
-                log.warn("Failed to load camp id={}: {}", id, e.getMessage());
-            }
+        if (campIds.isEmpty()) {
+            return Map.of();
         }
-        return result;
+        try {
+            return campServiceClient.getCamps(new ArrayList<>(campIds)).stream()
+                    .collect(Collectors.toMap(CampDto::getId, Function.identity()));
+        } catch (Exception e) {
+            log.warn("Failed to load camps in bulk: {}", e.getMessage());
+            return Map.of();
+        }
     }
 
     private Map<UUID, DetachmentDto> loadDetachments(Set<UUID> detachmentIds) {
-        Map<UUID, DetachmentDto> result = new HashMap<>();
-        for (UUID id : detachmentIds) {
-            try {
-                result.put(id, campServiceClient.getDetachment(id));
-            } catch (Exception e) {
-                log.warn("Failed to load detachment id={}: {}", id, e.getMessage());
-            }
+        if (detachmentIds.isEmpty()) {
+            return Map.of();
         }
-        return result;
+        try {
+            return campServiceClient.getDetachments(new ArrayList<>(detachmentIds)).stream()
+                    .collect(Collectors.toMap(DetachmentDto::getId, Function.identity()));
+        } catch (Exception e) {
+            log.warn("Failed to load detachments in bulk: {}", e.getMessage());
+            return Map.of();
+        }
     }
-
-    // ─── ВСПОМОГАТЕЛЬНЫЙ МЕТОД ДЛЯ ОДНОГО ПОСТА ─────────────────────────────
 
     private PostResponse buildSinglePostResponse(Post post, UUID currentUserId) {
         Set<UUID> postIds = Set.of(post.getId());
-
         Map<UUID, Long> likesCountMap = likeRepository.countMapByPostIds(postIds);
         Set<UUID> likedByUser = currentUserId != null
                 ? likeRepository.findLikedPostIds(postIds, currentUserId)
                 : Set.of();
 
-        Map<UUID, UserProfileDto> authorMap    = loadAuthors(Set.of(post.getAuthorId()));
-        Map<UUID, CampDto>        campMap      = loadCamps(Set.of(post.getCampId()));
-        Map<UUID, DetachmentDto>  detachMap    = post.getDetachmentId() != null
-                ? loadDetachments(Set.of(post.getDetachmentId())) : Map.of();
+        Map<UUID, UserProfileDto> authorMap = loadAuthors(Set.of(post.getAuthorId()));
+        Map<UUID, CampDto> campMap = loadCamps(Set.of(post.getCampId()));
+        Map<UUID, DetachmentDto> detachMap = post.getDetachmentId() != null
+                ? loadDetachments(Set.of(post.getDetachmentId()))
+                : Map.of();
 
         return postMapper.toResponse(post, authorMap, campMap, detachMap, likesCountMap, likedByUser);
     }
 
-    // ─── ЗАГРУЗКА МЕДИА В S3 ─────────────────────────────────────────────────
-
-    private void attachMedia(Post post, List<MultipartFile> files, String mediaType) {
+    private void attachUploadedMedia(Post post, List<UUID> fileIds, String mediaType) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return;
+        }
         AtomicInteger order = new AtomicInteger(post.getMedia().size());
-        for (MultipartFile file : files) {
-            try {
-                UploadUrlResponse uploadResp = fileStorageClient.generateUploadUrl(
-                        "news-feed", "post",
-                        file.getOriginalFilename(), file.getContentType());
-
-                uploadFileToUrl(uploadResp.getUploadUrl(), file, uploadResp.getMethod());
-
-                fileStorageClient.confirmUpload(uploadResp.getFileId(), post.getId().toString());
-
-                // Для видео определяем длительность до загрузки в S3
-                Long durationSec = "VIDEO".equals(mediaType)
-                        ? VideoUtils.getDurationSeconds(file)
-                        : null;
-
-                post.addMedia(PostMedia.builder()
-                        .mediaType(mediaType)
-                        .sortOrder(order.getAndIncrement())
-                        .fileId(uploadResp.getFileId())
-                        .durationSec(durationSec)
-                        .build());
-
-            } catch (Exception e) {
-                log.error("Failed to upload {} {}: {}", mediaType, file.getOriginalFilename(), e.getMessage(), e);
-                throw new RuntimeException("Failed to upload " + mediaType + ": " + e.getMessage(), e);
-            }
+        for (UUID fileId : fileIds) {
+            fileStorageClient.confirmUpload(fileId, post.getId().toString());
+            post.addMedia(PostMedia.builder()
+                    .mediaType(mediaType)
+                    .sortOrder(order.getAndIncrement())
+                    .fileId(fileId)
+                    .durationSec(null)
+                    .build());
         }
     }
 
-    private void uploadFileToUrl(String uploadUrl, MultipartFile file, String method) throws IOException {
-        URL url = new URL(uploadUrl);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        try {
-            conn.setDoOutput(true);
-            conn.setRequestMethod(method != null ? method : "PUT");
-            conn.setRequestProperty("Content-Type", file.getContentType());
-            conn.setInstanceFollowRedirects(false);
-            conn.setUseCaches(false);
+    private PostModerationStatus resolveInitialStatus(CampPostingAccessDto access, boolean admin) {
+        return (admin || access.isCanPostWithoutModeration())
+                ? PostModerationStatus.PUBLISHED
+                : PostModerationStatus.PENDING_REVIEW;
+    }
 
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(file.getBytes());
-            }
-
-            int code = conn.getResponseCode();
-            if (code < 200 || code >= 300) {
-                String body = readStream(conn.getErrorStream());
-                throw new RuntimeException("S3 upload failed [" + code + "]: " + body);
-            }
-        } finally {
-            conn.disconnect();
+    private void ensureCanModerate(UUID campId) {
+        CampPostingAccessDto access = campServiceClient.getPostingAccess(campId);
+        if (!access.isCanModeratePosts()) {
+            throw new ForbiddenException("Only camp owner or senior counselor can moderate posts");
         }
     }
-
-    private String readStream(InputStream stream) {
-        if (stream == null) return "no body";
-        try { return new String(stream.readAllBytes(), StandardCharsets.UTF_8); }
-        catch (IOException e) { return "unreadable"; }
-    }
-
-    // ─── ХЕЛПЕРЫ РОЛЕЙ ───────────────────────────────────────────────────────
 
     private boolean isAdmin(String role) {
         return "ADMIN".equals(role) || "ROLE_ADMIN".equals(role);

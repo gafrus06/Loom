@@ -4,14 +4,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import ru.fun.authservice.entity.AdminSubscription;
 import ru.fun.authservice.security.GatewayUserPrincipal;
 import ru.fun.authservice.service.SubscriptionService;
-import ru.fun.authservice.service.YooKassaService;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -25,47 +27,28 @@ import java.util.UUID;
 @Slf4j
 public class SubscriptionController {
 
-    private final YooKassaService yooKassaService;
+    private static final String WEBHOOK_TOKEN_HEADER = "X-Webhook-Token";
+
     private final SubscriptionService subscriptionService;
     private final ObjectMapper objectMapper;
 
-    /**
-     * Создаёт платёж на покупку или продление подписки.
-     *
-     * Автоматически определяет тип:
-     * - нет активной подписки → первая покупка (ключ: payment-{userId}-{date})
-     * - есть активная подписка → продление (ключ: payment-renew-{userId}-{date})
-     *
-     * Разные ключи гарантируют что оба платежа можно провести в один день.
-     */
+    @Value("${yookassa.webhook-token:${YOOKASSA_WEBHOOK_TOKEN:}}")
+    private String webhookToken;
+
     @PostMapping("/pay")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, String>> pay(
-            @AuthenticationPrincipal GatewayUserPrincipal currentUser
-    ) {
-        UUID userId = currentUser.getUserId();
-
-        Optional<AdminSubscription> existing = subscriptionService.getSubscription(userId);
-        boolean isRenewal = existing.isPresent()
-                && existing.get().isActive()
-                && existing.get().getExpiresAt().isAfter(Instant.now());
-
-        log.info("Payment request for userId={}, isRenewal={}", userId, isRenewal);
-
-        YooKassaService.PaymentResult result = yooKassaService.createPayment(userId, isRenewal);
-
+    public ResponseEntity<Map<String, String>> pay(@AuthenticationPrincipal GatewayUserPrincipal currentUser) {
+        SubscriptionService.PaymentSession session = subscriptionService.createPayment(currentUser.getUserId());
         return ResponseEntity.ok(Map.of(
-                "paymentId",       result.paymentId(),
-                "confirmationUrl", result.confirmationUrl(),
-                "type",            isRenewal ? "renewal" : "new"
+                "paymentId", session.paymentId(),
+                "confirmationUrl", session.confirmationUrl() == null ? "" : session.confirmationUrl(),
+                "type", session.renewal() ? "renewal" : "new"
         ));
     }
 
     @GetMapping("/status")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Map<String, Object>> status(
-            @AuthenticationPrincipal GatewayUserPrincipal currentUser
-    ) {
+    public ResponseEntity<Map<String, Object>> status(@AuthenticationPrincipal GatewayUserPrincipal currentUser) {
         UUID userId = currentUser.getUserId();
         Optional<AdminSubscription> sub = subscriptionService.getSubscription(userId);
 
@@ -74,53 +57,52 @@ public class SubscriptionController {
         }
 
         Instant exp = sub.get().getExpiresAt();
+        boolean tokenRefreshRequired = currentUser.getAuthorities().stream()
+                .noneMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+
         return ResponseEntity.ok(Map.of(
-                "active",    true,
+                "active", true,
                 "expiresAt", exp.toString(),
-                "daysLeft",  Duration.between(Instant.now(), exp).toDays()
+                "daysLeft", Duration.between(Instant.now(), exp).toDays(),
+                "tokenRefreshRequired", tokenRefreshRequired
         ));
     }
 
     @PostMapping("/webhook")
-    public ResponseEntity<Void> webhook(@RequestBody String rawBody) {
-        log.info("=== YooKassa webhook received ===");
-        log.info("Body: {}", rawBody);
+    public ResponseEntity<Void> webhook(
+            @RequestBody String rawBody,
+            @RequestHeader(value = WEBHOOK_TOKEN_HEADER, required = false) String providedToken) {
+        validateWebhookToken(providedToken);
 
         try {
-            JsonNode root    = objectMapper.readTree(rawBody);
-            String event     = root.path("event").asText("");
-            log.info("event={}", event);
-
-            if (!"payment.succeeded".equals(event)) {
-                log.info("Ignoring event: {}", event);
-                return ResponseEntity.ok().build();
-            }
-
-            JsonNode obj     = root.path("object");
-            String status    = obj.path("status").asText("");
+            JsonNode root = objectMapper.readTree(rawBody);
+            String event = root.path("event").asText("");
+            JsonNode obj = root.path("object");
+            String status = obj.path("status").asText("");
             String paymentId = obj.path("id").asText("");
-            log.info("paymentId={} status={}", paymentId, status);
-
-            if (!"succeeded".equals(status)) {
-                return ResponseEntity.ok().build();
-            }
-
             String userIdStr = obj.path("metadata").path("userId").asText(null);
-            log.info("metadata.userId={}", userIdStr);
 
-            if (userIdStr == null || userIdStr.isBlank()) {
-                log.warn("No userId in metadata, paymentId={}", paymentId);
-                return ResponseEntity.ok().build();
+            if (paymentId.isBlank() || userIdStr == null || userIdStr.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Webhook payload is missing payment metadata");
             }
 
             UUID userId = UUID.fromString(userIdStr.trim());
-            subscriptionService.activateAdminSubscription(userId, paymentId);
-            log.info("SUCCESS: subscription activated for userId={}", userId);
-
+            subscriptionService.processWebhook(rawBody, event, paymentId, status, userId);
+            return ResponseEntity.ok().build();
+        } catch (ResponseStatusException ex) {
+            throw ex;
         } catch (Exception e) {
-            log.error("Webhook error: {}", e.getMessage(), e);
+            log.error("Webhook processing failed", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Webhook processing failed");
         }
+    }
 
-        return ResponseEntity.ok().build();
+    private void validateWebhookToken(String providedToken) {
+        if (webhookToken == null || webhookToken.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Webhook token is not configured");
+        }
+        if (!webhookToken.equals(providedToken)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+        }
     }
 }

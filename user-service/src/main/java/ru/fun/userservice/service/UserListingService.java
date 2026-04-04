@@ -73,13 +73,15 @@ public class UserListingService {
         List<UserProfile> filtered = applyRoleFilter(
                 content, roleFilter, parentsByUserId, counselorsByUserId, adminsByUserId
         );
+        Map<UUID, String> avatarUrlsByFileId = userProfileFacade.resolveAvatarUrls(filtered);
 
         List<UserProfileResponse> users = filtered.stream()
                 .map(u -> userProfileFacade.buildResponseForListing(
                         u,
                         parentsByUserId.get(u.getId()),
                         counselorsByUserId.get(u.getId()),
-                        adminsByUserId.get(u.getId())
+                        adminsByUserId.get(u.getId()),
+                        u.getAvatarFileId() != null ? avatarUrlsByFileId.get(u.getAvatarFileId()) : null
                 ))
                 .collect(Collectors.toList());
 

@@ -15,5 +15,4 @@ public class EditUserProfileRequest  {
     @Size(max = 16, message = "Максимум 16 символов (включая +)")
     private String phone;
 
-    private java.util.UUID avatarFileId;
 }

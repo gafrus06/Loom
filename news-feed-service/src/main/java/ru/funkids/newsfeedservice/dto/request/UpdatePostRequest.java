@@ -1,5 +1,6 @@
 package ru.funkids.newsfeedservice.dto.request;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
 import java.util.List;
@@ -9,10 +10,9 @@ import java.util.UUID;
 public class UpdatePostRequest {
     private String title;
     private String content;
+    private JsonNode contentJson;
     private List<UUID> mediaIdsToDelete;
-
-    // Boolean (не boolean) — null означает "не трогать закреп".
-    // Так один запрос PUT может одновременно обновить текст и закрепить пост,
-    // без отдельного PATCH /pin.
+    private List<UUID> newImageFileIds;
+    private List<UUID> newVideoFileIds;
     private Boolean isPinned;
 }

@@ -39,6 +39,9 @@ public class Camp {
     @Lob
     private String description;
 
+    @Column(name = "photo_file_id")
+    private UUID photoFileId;
+
     @Column(name = "owner_id", nullable = false)
     private UUID ownerId; // ADMIN, который создал лагерь
 

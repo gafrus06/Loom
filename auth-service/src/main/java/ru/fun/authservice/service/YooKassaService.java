@@ -14,7 +14,6 @@ import reactor.util.retry.Retry;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
@@ -22,11 +21,7 @@ import java.util.UUID;
 /**
  * Сервис для работы с YooKassa API.
  *
- * Идемпотентный ключ:
- * - Первая покупка: payment-{userId}-{date}
- * - Продление:      payment-renew-{userId}-{date}
- * Это гарантирует что повторный клик в тот же день не создаст дубль,
- * но первая покупка и продление всегда создают разные платежи.
+ * Идемпотентный ключ приходит снаружи из слоя subscription/payment ledger.
  */
 @Service
 @Slf4j
@@ -66,8 +61,7 @@ public class YooKassaService {
      * @param isRenewal true — продление существующей подписки, false — первая покупка.
      *                  Разные ключи гарантируют что оба платежа можно создать в один день.
      */
-    public PaymentResult createPayment(UUID userId, boolean isRenewal) {
-        String prefix = isRenewal ? "payment-renew-" : "payment-";
+    public PaymentResult createPayment(UUID userId, boolean isRenewal, String requestKey) {
         String description = isRenewal
                 ? "Продление подписки Администратор — 30 дней"
                 : "Подписка Администратор — 30 дней";
@@ -83,13 +77,9 @@ public class YooKassaService {
                 "metadata",    Map.of("userId", userId.toString())
         );
 
-        String idempotenceKey = UUID.nameUUIDFromBytes(
-                (prefix + userId + "-" + LocalDate.now()).getBytes(StandardCharsets.UTF_8)
-        ).toString();
-
         return webClient.post()
                 .header("Authorization", "Basic " + basicAuth())
-                .header("Idempotence-Key", idempotenceKey)
+                .header("Idempotence-Key", requestKey)
                 .bodyValue(body)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, response ->

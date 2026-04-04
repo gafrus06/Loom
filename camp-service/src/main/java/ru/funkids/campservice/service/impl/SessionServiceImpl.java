@@ -5,13 +5,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.funkids.campservice.dto.*;
+import ru.funkids.campservice.entity.AssignmentStatus;
 import ru.funkids.campservice.entity.Camp;
+import ru.funkids.campservice.entity.CampMemberSession;
+import ru.funkids.campservice.entity.CampSettings;
 import ru.funkids.campservice.entity.Session;
+import ru.funkids.campservice.entity.StaffSubRole;
 import ru.funkids.campservice.exception.ResourceNotFoundException;
+import ru.funkids.campservice.repository.CampMemberSessionRepository;
+import ru.funkids.campservice.repository.CampSettingsRepository;
 import ru.funkids.campservice.repository.CampRepository;
 import ru.funkids.campservice.repository.SessionRepository;
+import ru.funkids.campservice.security.CampSecurityService;
 import ru.funkids.campservice.service.SessionService;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,6 +31,9 @@ public class SessionServiceImpl implements SessionService {
 
     private final SessionRepository sessionRepository;
     private final CampRepository campRepository;
+    private final CampMemberSessionRepository campMemberSessionRepository;
+    private final CampSettingsRepository campSettingsRepository;
+    private final CampSecurityService campSecurityService;
 
     @Override
     public SessionResponseDto create(SessionCreateDto dto) {
@@ -87,6 +98,48 @@ public class SessionServiceImpl implements SessionService {
     public void delete(UUID id) {
         log.info("Deleting session: {}", id);
         sessionRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SessionContextDto getSessionContext(UUID sessionId, UUID userId) {
+        Session session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Session not found: " + sessionId));
+
+        UUID campId = session.getCamp().getId();
+        CampMemberSession acceptedAssignment = campMemberSessionRepository
+                .findByCampMemberUserIdAndAssignmentStatusAndActiveTrue(userId, AssignmentStatus.ACCEPTED)
+                .stream()
+                .filter(cms -> cms.getSession().getId().equals(sessionId))
+                .findFirst()
+                .orElse(null);
+
+        CampSettings settings = campSettingsRepository.findByCampId(campId).orElse(null);
+        boolean campOwner = campSecurityService.canManageCamp(campId, userId);
+        boolean acceptedStaff = acceptedAssignment != null;
+        boolean seniorCounselor = acceptedAssignment != null && acceptedAssignment.getSubRole() == StaffSubRole.SENIOR_COUNSELOR;
+        boolean medicalWorker = acceptedAssignment != null && acceptedAssignment.getSubRole() == StaffSubRole.MEDICAL_WORKER;
+
+        return SessionContextDto.builder()
+                .sessionId(session.getId())
+                .campId(campId)
+                .campName(session.getCamp().getName())
+                .sessionTitle(session.getTitle())
+                .mySubRole(acceptedAssignment == null ? null : acceptedAssignment.getSubRole().name())
+                .campOwner(campOwner)
+                .acceptedStaff(acceptedStaff)
+                .seniorCounselor(seniorCounselor)
+                .medicalWorker(medicalWorker)
+                .canManageCamp(campOwner)
+                .canManageCalendar(campSecurityService.canManageCalendar(sessionId, userId))
+                .canManageShiftTasks(campSecurityService.canManageShiftTasks(sessionId, userId))
+                .canAccessSeniorDashboard(campOwner || seniorCounselor)
+                .canOpenCampSettings(campOwner)
+                .calendarEnabled(settings != null && settings.isCalendarEnabled())
+                .calendarVisibleForParents(settings != null && settings.isCalendarVisibleForParents())
+                .postingMode(settings == null ? null : settings.getPostingMode().name())
+                .shiftDays(buildShiftDays(session.getStartDate(), session.getEndDate()))
+                .build();
     }
 
     @Override
@@ -169,5 +222,25 @@ public class SessionServiceImpl implements SessionService {
                 .createdAt(session.getCreatedAt())
                 .updatedAt(session.getUpdatedAt())
                 .build();
+    }
+
+    private List<SessionDayDto> buildShiftDays(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null || endDate.isBefore(startDate)) {
+            return List.of();
+        }
+
+        LocalDate today = LocalDate.now();
+        List<SessionDayDto> days = new ArrayList<>();
+        int dayNumber = 1;
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            days.add(SessionDayDto.builder()
+                    .dayNumber(dayNumber++)
+                    .date(date)
+                    .today(date.equals(today))
+                    .past(date.isBefore(today))
+                    .future(date.isAfter(today))
+                    .build());
+        }
+        return days;
     }
 }

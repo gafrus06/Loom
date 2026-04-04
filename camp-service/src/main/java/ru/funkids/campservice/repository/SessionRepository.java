@@ -14,9 +14,6 @@ public interface SessionRepository extends JpaRepository<Session, UUID> {
 
     List<Session> findByCampId(UUID campId);
 
-    /**
-     * Найти смены лагерей где пользователь - OWNER
-     */
     @Query("SELECT DISTINCT s FROM Session s " +
             "JOIN s.camp c " +
             "JOIN c.members cm " +
@@ -27,20 +24,18 @@ public interface SessionRepository extends JpaRepository<Session, UUID> {
     List<Session> findSessionsOfOwnedCamps(@Param("userId") UUID userId);
 
     /**
-     * Найти смены лагерей где пользователь - COUNSELOR
+     * Доступные сотруднику смены: только те, куда у него есть активное и принятое
+     * назначение через CampMemberSession.
      */
-    @Query("SELECT DISTINCT s FROM Session s " +
-            "JOIN s.camp c " +
-            "JOIN c.members cm " +
-            "WHERE cm.userId = :userId " +
-            "AND cm.role = 'COUNSELOR' " +
-            "AND cm.active = true " +
+    @Query("SELECT DISTINCT s FROM Session s, CampMemberSession cms " +
+            "WHERE cms.session = s " +
+            "AND cms.campMember.userId = :userId " +
+            "AND cms.campMember.active = true " +
+            "AND cms.active = true " +
+            "AND cms.assignmentStatus = 'ACCEPTED' " +
             "ORDER BY s.startDate DESC")
     List<Session> findSessionsOfAssignedCamps(@Param("userId") UUID userId);
 
-    /**
-     * Проверить является ли пользователь владельцем лагеря этой смены
-     */
     @Query("SELECT CASE WHEN COUNT(cm) > 0 THEN true ELSE false END " +
             "FROM Session s " +
             "JOIN s.camp c " +
@@ -51,16 +46,12 @@ public interface SessionRepository extends JpaRepository<Session, UUID> {
             "AND cm.active = true")
     boolean isUserOwnerOfSessionCamp(@Param("sessionId") UUID sessionId, @Param("userId") UUID userId);
 
-    /**
-     * Проверить является ли пользователь вожатым в лагере этой смены
-     */
-    @Query("SELECT CASE WHEN COUNT(cm) > 0 THEN true ELSE false END " +
-            "FROM Session s " +
-            "JOIN s.camp c " +
-            "JOIN c.members cm " +
-            "WHERE s.id = :sessionId " +
-            "AND cm.userId = :userId " +
-            "AND cm.role = 'COUNSELOR' " +
-            "AND cm.active = true")
+    @Query("SELECT CASE WHEN COUNT(cms) > 0 THEN true ELSE false END " +
+            "FROM CampMemberSession cms " +
+            "WHERE cms.session.id = :sessionId " +
+            "AND cms.campMember.userId = :userId " +
+            "AND cms.campMember.active = true " +
+            "AND cms.active = true " +
+            "AND cms.assignmentStatus = 'ACCEPTED'")
     boolean isUserCounselorOfSessionCamp(@Param("sessionId") UUID sessionId, @Param("userId") UUID userId);
 }

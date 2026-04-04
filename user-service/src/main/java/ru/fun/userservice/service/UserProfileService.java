@@ -17,14 +17,15 @@ public class UserProfileService {
 
     private final UserProfileRepository userProfileRepository;
 
-    public UserProfile updateProfileEntity(UUID userId, EditUserProfileRequest updatedProfile) {
+    public UserProfile updateProfileEntity(UUID userId, EditUserProfileRequest request) {
         UserProfile user = userProfileRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId));
 
-        user.setFirstName(updatedProfile.getFirstName());
-        user.setSecondName(updatedProfile.getSecondName());
-        user.setThirdName(updatedProfile.getThirdName());
-        user.setPhone(updatedProfile.getPhone());
+        if (request.getFirstName()  != null) user.setFirstName(request.getFirstName());
+        if (request.getSecondName() != null) user.setSecondName(request.getSecondName());
+        if (request.getThirdName()  != null) user.setThirdName(request.getThirdName());
+        if (request.getPhone()      != null) user.setPhone(request.getPhone());
+
 
         return userProfileRepository.save(user);
     }

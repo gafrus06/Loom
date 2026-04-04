@@ -2,6 +2,7 @@ package ru.funkids.campservice.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.funkids.campservice.dto.CounselorAssignDto;
@@ -96,7 +97,18 @@ public class CounselorAssignmentServiceImpl implements CounselorAssignmentServic
                 .active(true)
                 .build();
 
-        CounselorAssignment saved = assignmentRepository.save(assignment);
+        CounselorAssignment saved;
+        try {
+            saved = assignmentRepository.save(assignment);
+        } catch (DataIntegrityViolationException ex) {
+            return assignmentRepository.findByDetachmentIdAndUserIdAndActiveTrue(dto.getDetachmentId(), dto.getUserId())
+                    .map(existing -> {
+                        log.info("Concurrent duplicate counselor assignment resolved for detachment={} user={}",
+                                dto.getDetachmentId(), dto.getUserId());
+                        return mapToDto(existing);
+                    })
+                    .orElseThrow(() -> ex);
+        }
 
         auditEventService.log(
                 campId,

@@ -1,165 +1,238 @@
-// src/hooks/useNews.js
-import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-    getMyFeed,
-    getCampFeed,
-    likePost,
-    unlikePost,
-} from '../api/news';
-import { getCurrentUser } from '../api/auth';
+import { useCallback, useMemo, useState } from 'react';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { getMyFeed, likePost, unlikePost } from '../services/news';
+
+const PAGE_SIZE = 6;
+const MY_CAMP_STALE_TIME = 20 * 1000;
+const MY_CAMP_GC_TIME = 4 * 60 * 1000;
+const ALL_FEED_STALE_TIME = 0;
+const ALL_FEED_GC_TIME = 60 * 1000;
+
+function sortFeedItems(filter, items) {
+    if (filter !== 'all') return items;
+    return [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+export function buildFeedQueryKey({ campId, sessionId, filter, detachmentId }) {
+    return ['news-feed', {
+        campId: campId || null,
+        sessionId: sessionId || null,
+        filter,
+        detachmentId: detachmentId || null,
+    }];
+}
+
+async function fetchFeedPage({ pageParam = 0, queryKey }) {
+    const [, params] = queryKey;
+    const { campId, filter } = params;
+
+    const response = filter === 'my-camp'
+        ? await getMyFeed('my-camp', pageParam, PAGE_SIZE, campId)
+        : await getMyFeed('all', pageParam, PAGE_SIZE);
+
+    return {
+        ...response,
+        content: sortFeedItems(filter, response.content || []),
+    };
+}
+
+function patchInfinitePosts(oldData, updater) {
+    if (!oldData?.pages) return oldData;
+
+    return {
+        ...oldData,
+        pages: oldData.pages.map((page, pageIndex) => ({
+            ...page,
+            content: updater(page.content || [], pageIndex),
+        })),
+    };
+}
+
+export async function prefetchNewsFeed(queryClient, { campId, sessionId, filter = 'all', detachmentId = null }) {
+    if (filter !== 'my-camp') return;
+
+    const queryKey = buildFeedQueryKey({ campId, sessionId, filter, detachmentId });
+
+    await queryClient.prefetchInfiniteQuery({
+        queryKey,
+        queryFn: fetchFeedPage,
+        initialPageParam: 0,
+        staleTime: MY_CAMP_STALE_TIME,
+        gcTime: MY_CAMP_GC_TIME,
+        getNextPageParam: (lastPage, allPages) => {
+            if (!lastPage) return undefined;
+            if (lastPage.last || (lastPage.content?.length || 0) < PAGE_SIZE) return undefined;
+            return allPages.length;
+        },
+    });
+}
 
 export function useNewsFeed(campId, sessionId, initialFilter = 'all', detachmentId = null) {
-    const [posts, setPosts] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const queryClient = useQueryClient();
     const [filter, setFilter] = useState(initialFilter);
-    const [hasMore, setHasMore] = useState(true);
-    const [totalElements, setTotalElements] = useState(0);
+    const isMyCampFeed = filter === 'my-camp';
 
-    const currentUser = getCurrentUser();
-    const isAdmin = currentUser?.roles?.some(r => r === 'ADMIN' || r === 'ROLE_ADMIN');
+    const queryKey = useMemo(
+        () => buildFeedQueryKey({ campId, sessionId, filter, detachmentId }),
+        [campId, sessionId, filter, detachmentId]
+    );
 
-    const paramsRef = useRef({ campId, sessionId, filter, isAdmin, detachmentId });
-    useEffect(() => {
-        paramsRef.current = { campId, sessionId, filter, isAdmin, detachmentId };
+    const query = useInfiniteQuery({
+        queryKey,
+        queryFn: fetchFeedPage,
+        initialPageParam: 0,
+        staleTime: isMyCampFeed ? MY_CAMP_STALE_TIME : ALL_FEED_STALE_TIME,
+        gcTime: isMyCampFeed ? MY_CAMP_GC_TIME : ALL_FEED_GC_TIME,
+        refetchOnMount: isMyCampFeed ? false : 'always',
+        refetchOnReconnect: true,
+        refetchOnWindowFocus: false,
+        placeholderData: (previousData) => previousData,
+        getNextPageParam: (lastPage, allPages) => {
+            if (!lastPage) return undefined;
+            if (lastPage.last || (lastPage.content?.length || 0) < PAGE_SIZE) return undefined;
+            return allPages.length;
+        },
     });
 
-    const loadedPostIds = useRef(new Set());
-    const pageRef = useRef(0);
-    const isLoadingRef = useRef(false);
+    const posts = useMemo(() => {
+        const seen = new Set();
+        const flattened = [];
 
-    const loadPosts = useCallback(async (reset = false) => {
-        if (isLoadingRef.current) return;
-
-        const { campId, filter, isAdmin } = paramsRef.current;
-        const currentPage = reset ? 0 : pageRef.current;
-
-        isLoadingRef.current = true;
-        setLoading(true);
-        setError(null);
-
-        try {
-            let response;
-
-            if (filter === 'my-camp') {
-                // Всегда используем getMyFeed, передаём campId если выбран в селекторе
-                // Бэкенд использует campId напрямую или резолвит сам если не передан
-                response = await getMyFeed('my-camp', currentPage, 6, campId);
-            } else {
-                // Вкладка "Все" — filter=all, бэкенд сортирует только по дате
-                response = await getMyFeed('all', currentPage, 6);
+        for (const page of query.data?.pages || []) {
+            for (const post of page.content || []) {
+                if (seen.has(post.id)) continue;
+                seen.add(post.id);
+                flattened.push(post);
             }
-
-            const incoming = response.content || [];
-
-            // Для вкладки "Все" дополнительно сортируем на фронте по дате
-            // на случай, если бэкенд ещё не обновлён
-            const sorted = filter === 'all'
-                ? [...incoming].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-                : incoming;
-
-            if (reset) {
-                loadedPostIds.current.clear();
-                sorted.forEach(p => loadedPostIds.current.add(p.id));
-                setPosts(sorted);
-            } else {
-                const fresh = sorted.filter(p => {
-                    if (loadedPostIds.current.has(p.id)) return false;
-                    loadedPostIds.current.add(p.id);
-                    return true;
-                });
-                if (fresh.length > 0) {
-                    setPosts(prev => [...prev, ...fresh]);
-                } else {
-                    setHasMore(false);
-                }
-            }
-
-            setTotalElements(response.totalElements || 0);
-
-            if ((response.content?.length || 0) < 6 || response.last) {
-                setHasMore(false);
-            } else {
-                setHasMore(true);
-                pageRef.current = currentPage + 1;
-            }
-
-            if (reset) pageRef.current = 1;
-
-        } catch (err) {
-            setError(err.message);
-            setHasMore(false);
-        } finally {
-            setLoading(false);
-            isLoadingRef.current = false;
         }
-    }, []);
 
-    useEffect(() => {
-        pageRef.current = 0;
-        loadedPostIds.current.clear();
-        setHasMore(true);
-        isLoadingRef.current = false;
-        loadPosts(true);
-    }, [filter, campId, sessionId, detachmentId, loadPosts]);
+        return flattened;
+    }, [query.data]);
+
+    const totalElements = query.data?.pages?.[0]?.totalElements || 0;
+    const hasMore = Boolean(query.hasNextPage);
+    const loading = query.isPending || query.isFetchingNextPage;
+    const error = query.error?.message || null;
+
+    const refresh = useCallback(async () => {
+        await queryClient.invalidateQueries({
+            queryKey,
+            exact: true,
+            refetchType: 'active',
+        });
+    }, [queryClient, queryKey]);
 
     const loadMore = useCallback(() => {
-        if (!isLoadingRef.current && hasMore) loadPosts(false);
-    }, [hasMore, loadPosts]);
-
-    const refresh = useCallback(() => {
-        pageRef.current = 0;
-        loadedPostIds.current.clear();
-        setHasMore(true);
-        isLoadingRef.current = false;
-        loadPosts(true);
-    }, [loadPosts]);
+        if (!query.hasNextPage || query.isFetchingNextPage) return;
+        query.fetchNextPage();
+    }, [query]);
 
     const addPost = useCallback((newPost) => {
-        if (!loadedPostIds.current.has(newPost.id)) {
-            loadedPostIds.current.add(newPost.id);
-            setPosts(prev => [newPost, ...prev]);
-            setTotalElements(prev => prev + 1);
-        }
-    }, []);
+        queryClient.setQueryData(queryKey, (oldData) => {
+            if (!oldData?.pages?.length) {
+                return {
+                    pageParams: [0],
+                    pages: [{
+                        content: [newPost],
+                        totalElements: 1,
+                        last: true,
+                    }],
+                };
+            }
+
+            const firstPage = oldData.pages[0];
+            const filtered = (firstPage.content || []).filter((post) => post.id !== newPost.id);
+
+            return {
+                ...oldData,
+                pages: oldData.pages.map((page, index) => {
+                    if (index !== 0) return page;
+                    return {
+                        ...page,
+                        totalElements: (page.totalElements || 0) + 1,
+                        content: sortFeedItems(filter, [newPost, ...filtered]),
+                    };
+                }),
+            };
+        });
+    }, [filter, queryClient, queryKey]);
 
     const updatePost = useCallback((updatedPost) => {
-        setPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
-    }, []);
+        queryClient.setQueryData(queryKey, (oldData) => patchInfinitePosts(
+            oldData,
+            (content) => content.map((post) => (post.id === updatedPost.id ? updatedPost : post))
+        ));
+    }, [queryClient, queryKey]);
 
     const removePost = useCallback((postId) => {
-        loadedPostIds.current.delete(postId);
-        setPosts(prev => prev.filter(p => p.id !== postId));
-        setTotalElements(prev => prev - 1);
-    }, []);
+        queryClient.setQueryData(queryKey, (oldData) => {
+            if (!oldData?.pages) return oldData;
+
+            const postExists = oldData.pages.some((page) =>
+                (page.content || []).some((post) => post.id === postId)
+            );
+            if (!postExists) return oldData;
+
+            return {
+                ...oldData,
+                pages: oldData.pages.map((page, index) => ({
+                    ...page,
+                    totalElements: index === 0 ? Math.max(0, (page.totalElements || 0) - 1) : page.totalElements,
+                    content: (page.content || []).filter((post) => post.id !== postId),
+                })),
+            };
+        });
+    }, [queryClient, queryKey]);
 
     const toggleLike = useCallback(async (postId) => {
+        const currentPost = posts.find((post) => post.id === postId);
+        if (!currentPost) return;
+
+        const nextLiked = !currentPost.userInteraction?.liked;
+
+        queryClient.setQueryData(queryKey, (oldData) => patchInfinitePosts(
+            oldData,
+            (content) => content.map((post) => {
+                if (post.id !== postId) return post;
+                return {
+                    ...post,
+                    userInteraction: { ...post.userInteraction, liked: nextLiked },
+                    stats: {
+                        ...post.stats,
+                        likesCount: Math.max(0, (post.stats?.likesCount || 0) + (nextLiked ? 1 : -1)),
+                    },
+                };
+            })
+        ));
+
         try {
-            const post = posts.find(p => p.id === postId);
-            if (!post) return;
-            if (post.userInteraction?.liked) {
+            if (currentPost.userInteraction?.liked) {
                 await unlikePost(postId);
             } else {
                 await likePost(postId);
             }
-            setPosts(prev => prev.map(p => {
-                if (p.id !== postId) return p;
-                const liked = !p.userInteraction?.liked;
-                return {
-                    ...p,
-                    userInteraction: { ...p.userInteraction, liked },
-                    stats: { ...p.stats, likesCount: p.stats.likesCount + (liked ? 1 : -1) }
-                };
-            }));
-        } catch {}
-    }, [posts]);
-
-
+        } catch {
+            queryClient.setQueryData(queryKey, (oldData) => patchInfinitePosts(
+                oldData,
+                (content) => content.map((post) => (post.id === postId ? currentPost : post))
+            ));
+        }
+    }, [posts, queryClient, queryKey]);
 
     return {
-        posts, loading, error, filter, setFilter,
-        hasMore, totalElements, refresh,
-        addPost, updatePost, removePost,
-        toggleLike, loadMore
+        posts,
+        loading,
+        error,
+        filter,
+        setFilter,
+        hasMore,
+        totalElements,
+        refresh,
+        addPost,
+        updatePost,
+        removePost,
+        toggleLike,
+        loadMore,
+        isBackgroundRefreshing: query.isRefetching && !query.isPending && !query.isFetchingNextPage,
     };
 }

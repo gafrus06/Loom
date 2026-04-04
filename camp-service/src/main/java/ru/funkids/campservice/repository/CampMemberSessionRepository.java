@@ -3,30 +3,32 @@ package ru.funkids.campservice.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import ru.funkids.campservice.entity.AssignmentStatus;
 import ru.funkids.campservice.entity.CampMemberSession;
+import ru.funkids.campservice.entity.StaffSubRole;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface CampMemberSessionRepository extends JpaRepository<CampMemberSession, UUID> {
 
-    /** Все смены, к которым привязан данный вожатый (по записи CampMember) */
     List<CampMemberSession> findByCampMemberId(UUID campMemberId);
 
-    /** Все привязки к конкретной смене (кто назначен в эту смену) */
     List<CampMemberSession> findBySessionId(UUID sessionId);
 
-    /** Проверка: назначен ли данный вожатый (CampMember) на данную смену */
+    List<CampMemberSession> findBySessionIdAndAssignmentStatusAndActiveTrue(UUID sessionId, AssignmentStatus assignmentStatus);
+
+    List<CampMemberSession> findByCampMemberUserIdAndAssignmentStatusAndActiveTrue(UUID userId, AssignmentStatus assignmentStatus);
+
+    List<CampMemberSession> findByCampMemberUserIdAndActiveTrue(UUID userId);
+    List<CampMemberSession> findByCampMemberIdAndActiveTrue(UUID campMemberId);
+
     boolean existsByCampMemberIdAndSessionId(UUID campMemberId, UUID sessionId);
 
-    /** Найти конкретную привязку по CampMember + Session (для точечного удаления) */
     Optional<CampMemberSession> findByCampMemberIdAndSessionId(UUID campMemberId, UUID sessionId);
 
-    /**
-     * Проверка: имеет ли пользователь (userId) доступ к данной смене
-     * через CampMember в указанном лагере.
-     */
     @Query("""
             SELECT COUNT(cms) > 0
             FROM CampMemberSession cms
@@ -34,13 +36,42 @@ public interface CampMemberSessionRepository extends JpaRepository<CampMemberSes
               AND cms.campMember.userId = :userId
               AND cms.campMember.camp.id = :campId
               AND cms.campMember.active = true
+              AND cms.active = true
+              AND cms.assignmentStatus = 'ACCEPTED'
             """)
-    boolean existsBySessionIdAndUserIdAndCampId(
+    boolean existsAcceptedBySessionIdAndUserIdAndCampId(
             @Param("sessionId") UUID sessionId,
             @Param("userId") UUID userId,
             @Param("campId") UUID campId
     );
 
-    /** Удалить все привязки вожатого к сменам (при исключении из лагеря) */
+    @Query("""
+            SELECT COUNT(cms) > 0
+            FROM CampMemberSession cms
+            WHERE cms.session.id = :sessionId
+              AND cms.campMember.userId = :userId
+              AND cms.campMember.camp.id = :campId
+              AND cms.campMember.active = true
+              AND cms.active = true
+              AND cms.assignmentStatus = 'ACCEPTED'
+              AND cms.subRole = :subRole
+            """)
+    boolean existsAcceptedBySessionIdAndUserIdAndCampIdAndSubRole(
+            @Param("sessionId") UUID sessionId,
+            @Param("userId") UUID userId,
+            @Param("campId") UUID campId,
+            @Param("subRole") StaffSubRole subRole
+    );
+
+    @Query("""
+            SELECT cms
+            FROM CampMemberSession cms
+            WHERE cms.active = true
+              AND cms.assignmentStatus = 'ACCEPTED'
+              AND cms.session.endDate < :today
+              AND cms.autoDetachedAt IS NULL
+            """)
+    List<CampMemberSession> findAcceptedExpiredAssignments(@Param("today") LocalDate today);
+
     void deleteByCampMemberId(UUID campMemberId);
 }

@@ -6,11 +6,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -64,6 +67,29 @@ public class S3Service {
         }
         return String.format("%s/%s/%s%s", service, entityType, fileId, extension);
     }
+
+    public boolean objectExists(String objectKey) {
+        try {
+            s3Client.headObject(HeadObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .build());
+            return true;
+        } catch (NoSuchKeyException ex) {
+            return false;
+        } catch (Exception ex) {
+            log.warn("Failed to check S3 object existence for key={}", objectKey, ex);
+            return false;
+        }
+    }
+
+    public void deleteObject(String objectKey) {
+        s3Client.deleteObject(DeleteObjectRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .build());
+    }
+
     public boolean testConnection() {
         try {
             s3Client.listBuckets();

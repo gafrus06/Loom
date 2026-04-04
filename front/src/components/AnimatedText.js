@@ -1,6 +1,6 @@
-// src/components/AnimatedText.js
 import React, { useEffect, useRef, memo } from 'react';
 import TGSEmoji, { CUSTOM_EMOJI } from './TGSEmoji';
+
 
 // ─── Noto Animated (стандартные unicode эмодзи) ───────────────────────────────
 

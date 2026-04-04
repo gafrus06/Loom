@@ -4,18 +4,22 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.extern.jackson.Jacksonized;
+
+import java.math.BigDecimal;
 
 @Data
-@Builder
-@NoArgsConstructor
 @AllArgsConstructor
-@Jacksonized
+@NoArgsConstructor
+@Builder
 public class CounselorProfileDto {
-    private String specialization;
-    private Long experienceYears;
-    private String bio;
-    private String educationDocumentIds;
-    private String telegram;
-    private String shiftPreference;
+
+    private String     specialization;
+    private Long       experienceYears;
+    private String     bio;
+    private String     educationDocumentIds;
+    private String     telegram;
+    private String     shiftPreference;
+    private Integer    countOfCompletedShifts;
+    private BigDecimal rating;
+    private Integer    ratingCount;
 }

@@ -8,18 +8,14 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
- * Привязка вожатого (CampMember) к конкретной смене (Session).
+ * Привязка сотрудника (CampMember) к конкретной смене.
  *
- * Логика:
- *   - ADMIN (CampRole.OWNER) не получает записей в эту таблицу —
- *     его доступ ко всем сменам проверяется по роли напрямую.
- *   - Вожатый (CampRole.COUNSELOR) получает одну запись на каждую смену,
- *     в которую его назначил ADMIN.
- *   - Один вожатый может быть назначен на несколько смен одного лагеря.
- *
- * Пример: вожатый назначен в лагерь "Солнышко" на смены 1 и 3 →
- *   camp_members: (campId=X, userId=Y, role=COUNSELOR)
- *   camp_member_sessions: (campMemberId=M, sessionId=S1), (campMemberId=M, sessionId=S3)
+ * В новой модели именно здесь хранится:
+ * - подроль в рамках смены;
+ * - статус назначения;
+ * - кто назначил;
+ * - когда сотрудник ответил;
+ * - когда связь была автозавершена после окончания смены.
  */
 @Getter
 @Setter
@@ -33,8 +29,10 @@ import java.util.UUID;
                 columnNames = {"camp_member_id", "session_id"}
         ),
         indexes = {
-                @Index(name = "ix_cms_member",  columnList = "camp_member_id"),
-                @Index(name = "ix_cms_session", columnList = "session_id")
+                @Index(name = "ix_cms_member", columnList = "camp_member_id"),
+                @Index(name = "ix_cms_session", columnList = "session_id"),
+                @Index(name = "ix_cms_status", columnList = "assignment_status"),
+                @Index(name = "ix_cms_sub_role", columnList = "sub_role")
         })
 public class CampMemberSession {
 
@@ -55,7 +53,33 @@ public class CampMemberSession {
     @JoinColumn(name = "session_id", nullable = false)
     private Session session;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "sub_role", nullable = false, length = 40)
+    @Builder.Default
+    private StaffSubRole subRole = StaffSubRole.COUNSELOR;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "assignment_status", nullable = false, length = 30)
+    @Builder.Default
+    private AssignmentStatus assignmentStatus = AssignmentStatus.PENDING;
+
+    @Column(name = "assigned_by_user_id")
+    private UUID assignedByUserId;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private OffsetDateTime assignedAt;
+
+    @Column(name = "responded_at")
+    private OffsetDateTime respondedAt;
+
+    @Column(name = "auto_detached_at")
+    private OffsetDateTime autoDetachedAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean active = true;
+
+    @Version
+    private Long version;
 }

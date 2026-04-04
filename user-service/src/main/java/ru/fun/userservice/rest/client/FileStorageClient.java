@@ -4,9 +4,12 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.fun.userservice.config.AppConfig;
 import ru.fun.userservice.dto.file.DownloadUrlResponse;
+import ru.fun.userservice.dto.file.DownloadUrlsRequest;
+import ru.fun.userservice.dto.file.DownloadUrlsResponse;
 import ru.fun.userservice.dto.file.UploadUrlResponse;
 
 import java.util.UUID;
@@ -32,4 +35,7 @@ public interface FileStorageClient {
 
     @GetMapping("/api/files/{fileId}/download-url")
     DownloadUrlResponse getDownloadUrl(@PathVariable("fileId") UUID fileId);
+
+    @PostMapping("/api/files/download-urls")
+    DownloadUrlsResponse getDownloadUrls(@RequestBody DownloadUrlsRequest request);
 }

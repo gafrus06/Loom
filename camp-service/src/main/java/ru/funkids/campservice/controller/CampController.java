@@ -38,6 +38,12 @@ public class CampController {
         return ResponseEntity.ok(campService.get(id));
     }
 
+    @PostMapping("/bulk")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<CampResponseDto>> bulkGet(@RequestBody List<UUID> campIds) {
+        return ResponseEntity.ok(campIds.stream().map(campService::get).toList());
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CampResponseDto> update(

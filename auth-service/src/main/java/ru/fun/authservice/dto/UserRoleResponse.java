@@ -2,8 +2,6 @@ package ru.fun.authservice.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
-import ru.fun.authservice.entity.Role;
 
 import java.util.Set;
 

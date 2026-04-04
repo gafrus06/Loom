@@ -53,6 +53,12 @@ public class DetachmentController {
         return ResponseEntity.ok(detachmentService.get(id));
     }
 
+    @PostMapping("/bulk")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<DetachmentResponseDto>> bulkGet(@RequestBody List<UUID> detachmentIds) {
+        return ResponseEntity.ok(detachmentIds.stream().map(detachmentService::get).toList());
+    }
+
     // -------------------------------------------------------------------------
     // Список всех отрядов смены
     // ADMIN: всегда. Вожатый: только своей смены. Родитель: только свой отряд.

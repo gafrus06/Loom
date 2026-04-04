@@ -53,10 +53,6 @@ public class CounselorProfileService {
         return toDto(repo.save(c));
     }
 
-    /**
-     * Было: @CacheEvict — удалял кэш, следующий getDto шёл в БД.
-     * Стало: @CachePut — сразу кладём актуальный DTO, лишнего запроса нет.
-     */
     @Transactional
     @CachePut(cacheNames = CacheNames.COUNSELOR_BY_USER_ID, key = "#userId")
     public CounselorProfileDto addEducationDocument(UUID userId, UUID fileId) {
@@ -68,7 +64,9 @@ public class CounselorProfileService {
 
         List<String> ids = parseIds(c.getEducationDocumentIds());
         String fid = fileId.toString();
-        if (!ids.contains(fid)) ids.add(fid);
+        if (!ids.contains(fid)) {
+            ids.add(fid);
+        }
         c.setEducationDocumentIds(String.join(",", ids));
 
         return toDto(repo.save(c));
@@ -87,6 +85,12 @@ public class CounselorProfileService {
         return toDto(repo.save(c));
     }
 
+    @Transactional
+    @CacheEvict(cacheNames = CacheNames.COUNSELOR_BY_USER_ID, key = "#userId")
+    public void deleteByUserId(UUID userId) {
+        repo.findByUserProfile_Id(userId).ifPresent(repo::delete);
+    }
+
     private List<String> parseIds(String raw) {
         if (raw == null || raw.isBlank()) return new ArrayList<>();
         return new ArrayList<>(Arrays.asList(raw.split(",")));
@@ -100,6 +104,9 @@ public class CounselorProfileService {
                 .educationDocumentIds(c.getEducationDocumentIds())
                 .telegram(c.getTelegram())
                 .shiftPreference(c.getShiftPreference())
+                .countOfCompletedShifts(c.getCountOfCompletedShifts())
+                .rating(c.getRating())
+                .ratingCount(c.getRatingCount())
                 .build();
     }
 }

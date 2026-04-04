@@ -3,6 +3,7 @@ package ru.funkids.newsfeedservice.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.funkids.newsfeedservice.config.RedisConfig;
@@ -34,14 +35,21 @@ public class LikeService {
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found: " + postId));
 
         if (likeRepository.existsByPostIdAndUserId(postId, currentUserId)) {
-            throw new BadRequestException("You have already liked this post");
+            log.info("Like already exists for postId={} userId={}, skipping duplicate request", postId, currentUserId);
+            return;
         }
 
-        likeRepository.save(Like.builder()
-                .post(post)
-                .userId(currentUserId)
-                .userRole(userRole)
-                .build());
+        try {
+            likeRepository.save(Like.builder()
+                    .post(post)
+                    .userId(currentUserId)
+                    .userRole(userRole)
+                    .build());
+        } catch (DataIntegrityViolationException ex) {
+            log.info("Concurrent duplicate like resolved by unique constraint for postId={} userId={}",
+                    postId, currentUserId);
+            return;
+        }
 
         log.info("Post {} liked by userId={}", postId, currentUserId);
     }

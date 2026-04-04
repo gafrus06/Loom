@@ -35,6 +35,14 @@ public class SessionController {
         return ResponseEntity.ok(sessionService.get(id));
     }
 
+    @GetMapping("/{id}/context")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR', 'PARENT', 'SUPER_ADMIN')")
+    public ResponseEntity<SessionContextDto> getContext(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal GatewayUserPrincipal currentUser) {
+        return ResponseEntity.ok(sessionService.getSessionContext(id, currentUser.getUserId()));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SessionResponseDto> update(

@@ -23,8 +23,13 @@ public class CampMemberResponseDto {
     private boolean active;
 
     /**
-     * Смены, к которым привязан вожатый.
-     * Для OWNER всегда пустой список — доступ по роли.
+     * Для обратной совместимости оставляем старое поле.
+     * В новой логике фронту лучше использовать sessionAssignments.
      */
     private List<UUID> sessionIds;
+
+    /**
+     * Полная информация о назначениях сотрудника на смены.
+     */
+    private List<SessionStaffAssignmentResponseDto> sessionAssignments;
 }

@@ -24,6 +24,10 @@ public class GatewayUserPrincipal implements UserDetails {
     }
 
     public UUID getUserId() { return userId; }
+    public boolean hasRole(String roleName) {
+        String normalized = roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName;
+        return roles.stream().anyMatch(role -> normalized.equals(role.startsWith("ROLE_") ? role : "ROLE_" + role));
+    }
 
     @Override
     public String getUsername() { return username; }

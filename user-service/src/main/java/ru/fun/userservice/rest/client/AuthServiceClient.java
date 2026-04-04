@@ -11,12 +11,21 @@ import java.util.UUID;
 /**
  * Feign-клиент для auth-service.
  *
- * url убран — Feign ищет сервис через Eureka по имени "auth-service".
- * При репликах Spring Cloud LoadBalancer автоматически балансирует между ними.
+ * Используется в UserProfileFacade.getUserProfileById() —
+ * когда нужно получить роли пользователя по его ID
+ * (например, при просмотре чужого профиля).
+ *
+ * В остальных случаях роли приходят из JWT заголовка X-User-Roles
+ * через GatewayUserPrincipal — Feign не нужен.
  */
 @FeignClient(name = "auth-service", configuration = AppConfig.class)
 public interface AuthServiceClient {
 
+    /**
+     * Получить активные роли пользователя с метаданными.
+     * Возвращает UserRolesResponse с List<UserRoleDto>.
+     * Для получения просто списка строк используй response.getRoleNames().
+     */
     @GetMapping("/api/auth/users/{userId}/roles")
     UserRolesResponse getRolesByUserId(@PathVariable UUID userId);
 }

@@ -30,7 +30,9 @@ public class RefreshToken {
     @Column(nullable = false)
     private Instant expiryDate;
 
-    // @Builder.Default — чтобы Lombok не игнорировал инициализатор
+    @Version
+    private Long version;
+
     @Builder.Default
     @Column(nullable = false)
     private boolean revoked = false;

@@ -54,6 +54,11 @@ public class JwtUtil {
         return roles.stream().map(Object::toString).collect(Collectors.toSet());
     }
 
+    public long extractTokenVersion(String token) {
+        Number tokenVersion = parseClaims(token).get("tv", Number.class);
+        return tokenVersion == null ? 0L : tokenVersion.longValue();
+    }
+
     // ─── PRIVATE ─────────────────────────────────────────────────────────────
 
     private Claims parseClaims(String token) {

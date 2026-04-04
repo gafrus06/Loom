@@ -1,10 +1,9 @@
 package ru.fun.authservice.dto;
 
-import lombok.Data;
-
-@Data
-public class AssignRoleRequest {
-
-    private String email;
-    private String role;
-}
+/**
+ * Тело запроса на назначение роли.
+ * POST /api/auth/users/{targetUserId}/roles
+ */
+public record AssignRoleRequest(
+        String role   // например "ROLE_ADMIN", "ROLE_COUNSELOR"
+) {}

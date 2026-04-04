@@ -1,0 +1,143 @@
+:root {
+    /* используем те же токены, что в profile/auth */
+    --btn-grad-start: #c9c1e2;
+    --btn-grad-end:#3C8DFF;
+
+    --panel: rgba(20,23,30,.72);
+    --stroke: rgba(255,255,255,.06);
+    --text:#EAEFF7;
+    --muted:#A9B3C7;
+
+    --input-bg:#0F141B;
+    --input-stroke:#2a3040;
+    --input-focus:#3d6dff;
+
+    --radius:14px;
+    --shadow: 0 20px 40px rgba(0,0,0,.35), 0 2px 10px rgba(0,0,0,.35);
+}
+
+/* оболочка — фон как на других страницах */
+.ob-shell {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: radial-gradient(
+            circle 510px at 67% 100%,
+            rgb(28, 11, 53) 6%,
+            rgb(27, 17, 58) 20%,
+            #0a0a0f 100%
+    );
+    color: var(--text);
+}
+
+/* компактная карточка */
+.ob-card {
+    width: 100%;
+    max-width: 520px;              /* чуть уже формы */
+    background: var(--panel);      /* тёмная панель */
+    border: 1px solid var(--stroke);
+    color: var(--text);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 20px 20px 16px;
+    backdrop-filter: blur(8px);
+}
+
+.ob-title { font-weight: 800; font-size: 18px; margin-bottom: 10px; }
+
+.ob-progress {
+    height: 8px;
+    background: rgba(255,255,255,.08);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+.ob-progress-bar { height: 100%; background: linear-gradient(90deg,#6c63ff,#9a8cff); }
+
+.ob-steps { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.ob-step { display: inline-flex; align-items: center; gap: 6px; opacity: .65; font-size: 13px; }
+.ob-step.active, .ob-step.done { opacity: 1; }
+.ob-step .dot { width: 8px; height: 8px; border-radius: 50%; background: #6c63ff; }
+.ob-step.done .dot { background: #2bb673; }
+
+.ob-body { margin-top: 8px; }
+.grid { display: grid; gap: 14px; }
+.grid.grid-2 { grid-template-columns: 1fr 1fr; }
+.field.col-2 { grid-column: 1 / -1; }
+
+.field > label { font-size: 13px; color: var(--muted); margin-bottom: 6px; display:block; }
+
+.input {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--input-stroke);
+    color: var(--text);
+    border-radius: 10px;
+    height: 44px;
+    padding: 10px 12px;
+    outline: 0;
+    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.input::placeholder { color: #77829a; }
+.input:focus { border-color: var(--input-focus); box-shadow: 0 0 0 3px rgba(60,141,255,.25); }
+
+.input-with-action { display: flex; gap: 8px; align-items: center; }
+
+/* сообщения */
+.ob-msg { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+.ob-msg.info { background: rgba(60,141,255,.12); color: #cfe1ff; border: 1px solid rgba(60,141,255,.32); }
+.ob-msg.error { background: rgba(255,107,107,.12); color: #ffd7d7; border: 1px solid rgba(255,107,107,.32); }
+
+.ob-actions { margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; }
+
+/* кнопки (совместимы с твоими токенами) */
+.btn-primary {
+    border:0; border-radius:12px; padding:10px 16px; font-weight:800; color:#fff;
+    background:linear-gradient(to right, var(--btn-grad-start), var(--btn-grad-end));
+    box-shadow:0 12px 26px rgba(60,141,255,.25); cursor:pointer;
+    transition:transform .12s ease, filter .12s ease, box-shadow .12s ease;
+}
+.btn-primary:hover{filter:brightness(1.05)}
+.btn-primary:active{transform:scale(.985)}
+.btn-primary.sm{padding:8px 12px; border-radius:10px}
+
+.btn-ghost{
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.05);
+    color:var(--text);
+    border-radius:12px; padding:10px 14px; font-weight:800; cursor:pointer;
+    transition:background .15s ease, border-color .15s ease;
+}
+.btn-ghost:hover{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.18)}
+.btn-ghost.sm{padding:8px 12px; border-radius:10px}
+
+/* адаптив */
+@media (max-width: 760px) {
+    .grid.grid-2 { grid-template-columns: 1fr; }
+}
+
+.avatar-upload { display: grid; justify-items: center; gap: 10px; }
+.avatar-preview {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0,0,0,.35);
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.08);
+}
+.avatar-preview-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+.upload-dim { position: absolute; inset: 0; background: rgba(0,0,0,.4); display: grid; place-items: center; }
+.spinner {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,.25);
+    border-top-color: #fff;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.mt8 { margin-top: 8px; }
+.btn-ghost.small { padding: 9px 12px; border-radius: 10px; }

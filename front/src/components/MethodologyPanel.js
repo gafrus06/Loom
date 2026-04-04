@@ -1,61 +1,104 @@
-import React, { useState, useEffect } from 'react';
-import '../styles/MethodologyPanel.css';
-import { methodologyAPI } from '../api/methodology';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { methodologyAPI } from '../services/methodology';
+import './MethodologyPanel.css';
 
-const MethodologyPanel = ({ detachmentId, currentStage, ageGroup }) => {
+const TABS = [
+    { id: 'games', label: 'Игры', emoji: '🎮', icon: '🎲' },
+    { id: 'campfires', label: 'Огоньки', emoji: '🔥', icon: '🕯️' },
+    { id: 'exercises', label: 'Упражнения', emoji: '🤸', icon: '⚽' },
+    { id: 'physiological', label: 'Физиология', emoji: '🧬', icon: '❤️' },
+];
+
+const TYPE_MAPPING = {
+    games: 'GAME',
+    campfires: 'CAMPFIRE',
+    exercises: 'EXERCISE',
+    physiological: 'PHYSIOLOGICAL',
+};
+
+const RECOMMENDATION_TAB_MAPPING = {
+    game: 'games',
+    campfire: 'campfires',
+    exercise: 'exercises',
+    physiological: 'physiological',
+};
+
+function buildReadStorageKey(detachmentId) {
+    return `methodology_read_${detachmentId}`;
+}
+
+function parseStoredReadMaterials(detachmentId) {
+    if (!detachmentId) {
+        return {};
+    }
+
+    try {
+        const saved = localStorage.getItem(buildReadStorageKey(detachmentId));
+        return saved ? JSON.parse(saved) : {};
+    } catch {
+        return {};
+    }
+}
+
+function mapAgeGroup(ageGroup) {
+    if (!ageGroup) return '8-10';
+
+    const numbers = String(ageGroup).match(/\d+/g);
+    if (!numbers?.length) return '8-10';
+
+    const age = Number.parseInt(numbers[0], 10);
+    if (Number.isNaN(age)) return '8-10';
+    if (age <= 7) return '5-7';
+    if (age <= 10) return '8-10';
+    if (age <= 13) return '11-13';
+    return '14-17';
+}
+
+function getRecommendationTab(type) {
+    return RECOMMENDATION_TAB_MAPPING[type] || 'games';
+}
+
+function getMaterialKey(tabId, materialId) {
+    return `${tabId}_${materialId}`;
+}
+
+export default function MethodologyPanel({ detachmentId, currentStage, ageGroup }) {
     const [activeTab, setActiveTab] = useState('games');
     const [materials, setMaterials] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState('');
     const [selectedMaterial, setSelectedMaterial] = useState(null);
     const [recommendations, setRecommendations] = useState([]);
-    const [loadingRecommendations, setLoadingRecommendations] = useState(false);
-
-    // Состояния для локального кэширования (как fallback, если бэкенд не поддерживает)
-    const [readMaterials, setReadMaterials] = useState(() => {
-        const saved = localStorage.getItem(`methodology_read_${detachmentId}`);
-        return saved ? JSON.parse(saved) : {};
-    });
-
+    const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+    const [readMaterials, setReadMaterials] = useState(() => parseStoredReadMaterials(detachmentId));
     const [favorites, setFavorites] = useState([]);
+    const [pendingMaterialId, setPendingMaterialId] = useState(null);
 
-    // Маппинг типов для бэкенда
-    const typeMapping = {
-        'games': 'GAME',
-        'campfires': 'CAMPFIRE',
-        'exercises': 'EXERCISE',
-        'physiological': 'PHYSIOLOGICAL'
-    };
+    const favoritesByTab = useMemo(
+        () => TABS.filter((tab) => favorites.some((favorite) => favorite.tab === tab.id)),
+        [favorites],
+    );
 
-    const tabs = [
-        { id: 'games', label: 'Игры', emoji: '🎮', icon: '🎲' },
-        { id: 'campfires', label: 'Огоньки', emoji: '🔥', icon: '🕯️' },
-        { id: 'exercises', label: 'Упражнения', emoji: '🤸', icon: '⚽' },
-        { id: 'physiological', label: 'Физиология', emoji: '🧬', icon: '❤️' }
-    ];
-
-    // Загрузка материалов при смене вкладки или этапа
     useEffect(() => {
-        loadMaterials();
-    }, [activeTab, currentStage, detachmentId]);
+        setReadMaterials(parseStoredReadMaterials(detachmentId));
+    }, [detachmentId]);
 
-    // Загрузка рекомендаций при смене этапа
     useEffect(() => {
-        loadRecommendations();
-    }, [currentStage, detachmentId]);
+        if (!detachmentId) return;
+        localStorage.setItem(buildReadStorageKey(detachmentId), JSON.stringify(readMaterials));
+    }, [detachmentId, readMaterials]);
 
-    // Сохранение локального кэша (только как fallback)
-    useEffect(() => {
-        localStorage.setItem(`methodology_read_${detachmentId}`, JSON.stringify(readMaterials));
-    }, [readMaterials, detachmentId]);
+    const loadMaterials = useCallback(async () => {
+        if (!detachmentId || !currentStage) {
+            setMaterials([]);
+            return;
+        }
 
-    const loadMaterials = async () => {
         setLoading(true);
-        setError(null);
+        setError('');
 
         try {
             let data = [];
-
 
             switch (activeTab) {
                 case 'games':
@@ -68,251 +111,235 @@ const MethodologyPanel = ({ detachmentId, currentStage, ageGroup }) => {
                     data = await methodologyAPI.getExercises(detachmentId, currentStage);
                     break;
                 case 'physiological':
-                    // Преобразуем возрастную группу в формат для БД
-                    const mappedAgeGroup = mapAgeGroup(ageGroup);
-                    data = await methodologyAPI.getPhysiologicalFeatures(mappedAgeGroup);
+                    data = await methodologyAPI.getPhysiologicalFeatures(mapAgeGroup(ageGroup));
                     break;
                 default:
                     data = [];
             }
 
-            setMaterials(data);
+            setMaterials(Array.isArray(data) ? data : []);
 
-            // Если данные пришли с бэкенда, обновляем локальный кэш прочитанных
-            if (data.length > 0 && data[0].isUsed !== undefined) {
-                const readState = {};
-                data.forEach(m => {
-                    if (m.isUsed) {
-                        readState[`${activeTab}_${m.id}`] = {
-                            id: m.id,
-                            title: m.title,
+            if (Array.isArray(data) && data.some((item) => item?.isUsed !== undefined)) {
+                const nextReadState = {};
+                data.forEach((item) => {
+                    if (item?.isUsed) {
+                        nextReadState[getMaterialKey(activeTab, item.id)] = {
+                            id: item.id,
+                            title: item.title,
                             type: activeTab,
-                            readAt: m.lastUsedAt || new Date().toISOString(),
-                            stage: currentStage
+                            readAt: item.lastUsedAt || new Date().toISOString(),
+                            stage: currentStage,
                         };
                     }
                 });
-                setReadMaterials(prev => ({ ...prev, ...readState }));
+                setReadMaterials((prev) => ({ ...prev, ...nextReadState }));
             }
-        } catch (err) {
-            setError('Не удалось загрузить материалы.');
+        } catch {
             setMaterials([]);
+            setError('Не удалось загрузить материалы.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [activeTab, ageGroup, currentStage, detachmentId]);
 
-// Функция для маппинга возрастной группы
-    const mapAgeGroup = (ageGroup) => {
-        if (!ageGroup) return '8-10'; // значение по умолчанию
+    const loadRecommendations = useCallback(async () => {
+        if (!detachmentId || !currentStage) {
+            setRecommendations([]);
+            return;
+        }
 
-        // Если приходит строка вида "12-14" или "12"
-
-        // Пробуем извлечь числа из строки
-        const numbers = ageGroup.match(/\d+/g);
-        if (!numbers || numbers.length === 0) return '8-10';
-
-        const age = parseInt(numbers[0]);
-
-        // Маппинг возраста в группы
-        if (age <= 7) return '5-7';
-        if (age <= 10) return '8-10';
-        if (age <= 13) return '11-13';
-        if (age >= 14) return '14-17';
-
-        return '8-10'; // значение по умолчанию
-    };
-
-    const loadRecommendations = async () => {
-        setLoadingRecommendations(true);
+        setRecommendationsLoading(true);
         try {
             const data = await methodologyAPI.getRecommendedForStage(detachmentId, currentStage);
-            setRecommendations(data);
-        } catch (err) {
-            // Не показываем ошибку пользователю для рекомендаций
+            setRecommendations(Array.isArray(data) ? data : []);
+        } catch {
+            setRecommendations([]);
         } finally {
-            setLoadingRecommendations(false);
+            setRecommendationsLoading(false);
         }
-    };
+    }, [currentStage, detachmentId]);
 
-    const handleMaterialClick = (material) => {
-        setSelectedMaterial(material);
-    };
+    const loadFavorites = useCallback(async () => {
+        if (!detachmentId) {
+            setFavorites([]);
+            return;
+        }
 
-    const handleCloseDetails = () => {
+        try {
+            const results = await Promise.all(
+                Object.keys(TYPE_MAPPING).map(async (tabId) => {
+                    try {
+                        const items = await methodologyAPI.getFavorites(detachmentId, TYPE_MAPPING[tabId]);
+                        return (Array.isArray(items) ? items : []).map((item) => ({
+                            key: getMaterialKey(tabId, item.id),
+                            tab: tabId,
+                            ...item,
+                        }));
+                    } catch {
+                        return [];
+                    }
+                }),
+            );
+
+            setFavorites(results.flat());
+        } catch {
+            setFavorites([]);
+        }
+    }, [detachmentId]);
+
+    useEffect(() => {
+        loadMaterials();
+    }, [loadMaterials]);
+
+    useEffect(() => {
+        loadRecommendations();
+    }, [loadRecommendations]);
+
+    useEffect(() => {
+        loadFavorites();
+    }, [loadFavorites]);
+
+    useEffect(() => {
+        if (!pendingMaterialId || materials.length === 0) return;
+
+        const targetMaterial = materials.find((material) => material.id === pendingMaterialId);
+        if (targetMaterial) {
+            setSelectedMaterial(targetMaterial);
+            setPendingMaterialId(null);
+        }
+    }, [materials, pendingMaterialId]);
+
+    const isMaterialRead = useCallback((material, tabId = activeTab) => {
+        if (material?.isUsed !== undefined) {
+            return material.isUsed;
+        }
+
+        return Boolean(readMaterials[getMaterialKey(tabId, material.id)]);
+    }, [activeTab, readMaterials]);
+
+    const isFavorite = useCallback((material, tabId = activeTab) => (
+        favorites.some((favorite) => favorite.key === getMaterialKey(tabId, material.id))
+    ), [activeTab, favorites]);
+
+    const readCount = useMemo(() => Object.keys(readMaterials).length, [readMaterials]);
+
+    const handleCloseDetails = useCallback(() => {
         setSelectedMaterial(null);
-    };
+    }, []);
 
-    const toggleReadStatus = async (material, e) => {
-        e?.stopPropagation();
+    const handleMaterialClick = useCallback((material) => {
+        setSelectedMaterial(material);
+    }, []);
 
-        const materialKey = `${activeTab}_${material.id}`;
-        const isCurrentlyRead = !!readMaterials[materialKey];
+    const toggleReadStatus = useCallback(async (material, event) => {
+        event?.stopPropagation();
+
+        const materialKey = getMaterialKey(activeTab, material.id);
+        const isCurrentlyRead = Boolean(readMaterials[materialKey]);
 
         try {
             if (!isCurrentlyRead) {
-                // Отмечаем как прочитанное на бэкенде
                 await methodologyAPI.markAsUsed(
                     detachmentId,
                     material.id,
-                    typeMapping[activeTab],
+                    TYPE_MAPPING[activeTab],
                     currentStage,
-                    'Отмечено как прочитанное'
+                    'Отмечено как прочитанное',
                 );
             }
 
-            // Обновляем локальное состояние
-            setReadMaterials(prev => {
-                const newState = { ...prev };
+            setReadMaterials((prev) => {
+                const nextState = { ...prev };
                 if (isCurrentlyRead) {
-                    delete newState[materialKey];
+                    delete nextState[materialKey];
                 } else {
-                    newState[materialKey] = {
+                    nextState[materialKey] = {
                         id: material.id,
                         title: material.title,
                         type: activeTab,
                         readAt: new Date().toISOString(),
-                        stage: currentStage
+                        stage: currentStage,
                     };
                 }
-                return newState;
+                return nextState;
             });
 
-            // Обновляем материал в списке (если пришел с бэкенда с флагом used)
-            if (material.isUsed !== undefined) {
-                setMaterials(prev =>
-                    prev.map(m =>
-                        m.id === material.id
-                            ? { ...m, isUsed: !isCurrentlyRead }
-                            : m
-                    )
-                );
-            }
-        } catch (err) { }
-    };
-
-    const isMaterialRead = (material) => {
-        // Сначала проверяем флаг с бэкенда, если есть
-        if (material.isUsed !== undefined) {
-            return material.isUsed;
+            setMaterials((prev) => prev.map((item) => (
+                item.id === material.id && item.isUsed !== undefined
+                    ? { ...item, isUsed: !isCurrentlyRead }
+                    : item
+            )));
+        } catch {
+            // backend already stays the source of truth; UI keeps previous state on failure
         }
-        // Иначе проверяем локальный кэш
-        return !!readMaterials[`${activeTab}_${material.id}`];
-    };
+    }, [activeTab, currentStage, detachmentId, readMaterials]);
 
-    const getReadCount = () => {
-        return Object.keys(readMaterials).length;
-    };
+    const toggleFavorite = useCallback(async (material, event) => {
+        event?.stopPropagation();
 
-    const handleRecommendationClick = (rec) => {
-        setActiveTab(rec.type === 'game' ? 'games' :
-            rec.type === 'campfire' ? 'campfires' :
-                rec.type === 'exercise' ? 'exercises' : activeTab);
-
-        // Загружаем полную информацию о материале
-        loadMaterialDetails(rec.id);
-    };
-
-    const loadMaterialDetails = async (materialId) => {
-        try {
-            // Здесь нужно будет добавить эндпоинт для получения материала по ID
-            // Пока используем то, что есть в списке
-            const material = materials.find(m => m.id === materialId);
-            if (material) {
-                setSelectedMaterial(material);
-            }
-        } catch (err) { }
-    };
-
-    const clearAllFavorites = async () => {
-        const toDelete = [...favorites];
-        setFavorites([]); // оптимистичное обновление
-        await Promise.allSettled(
-            toDelete.map(fav =>
-                methodologyAPI.removeFromFavorites(detachmentId, fav.id, typeMapping[fav.tab])
-                    .catch(() => {})
-            )
-        );
-    };
-
-    const toggleFavorite = async (material, e) => {
-        e.stopPropagation();
-        const materialKey = `${activeTab}_${material.id}`;
-        const isFav = favorites.some(fav => fav.key === materialKey);
+        const materialKey = getMaterialKey(activeTab, material.id);
+        const alreadyFavorite = favorites.some((favorite) => favorite.key === materialKey);
 
         try {
-            if (isFav) {
-                await methodologyAPI.removeFromFavorites(
-                    detachmentId,
-                    material.id,
-                    typeMapping[activeTab]
-                );
+            if (alreadyFavorite) {
+                await methodologyAPI.removeFromFavorites(detachmentId, material.id, TYPE_MAPPING[activeTab]);
+                setFavorites((prev) => prev.filter((favorite) => favorite.key !== materialKey));
             } else {
-                await methodologyAPI.addToFavorites(
-                    detachmentId,
-                    material.id,
-                    typeMapping[activeTab]
-                );
+                await methodologyAPI.addToFavorites(detachmentId, material.id, TYPE_MAPPING[activeTab]);
+                setFavorites((prev) => [
+                    ...prev,
+                    { key: materialKey, tab: activeTab, ...material },
+                ]);
             }
+        } catch {
+            // intentionally silent to avoid noisy UX on transient failures
+        }
+    }, [activeTab, detachmentId, favorites]);
 
-            setFavorites(prev => {
-                if (isFav) {
-                    return prev.filter(fav => fav.key !== materialKey);
-                } else {
-                    return [...prev, { key: materialKey, tab: activeTab, ...material }];
-                }
-            });
-        } catch (err) { }
-    };
+    const clearAllFavorites = useCallback(async () => {
+        const currentFavorites = [...favorites];
+        setFavorites([]);
 
-    const loadFavorites = async () => {
-        try {
-            const allTabs = ['games', 'campfires', 'exercises', 'physiological'];
-            const results = await Promise.all(
-                allTabs.map(tab =>
-                    methodologyAPI.getFavorites(detachmentId, typeMapping[tab])
-                        .then(favs => favs.map(f => ({ key: `${tab}_${f.id}`, tab, ...f })))
-                        .catch(() => [])
-                )
-            );
-            setFavorites(results.flat());
-        } catch (err) { }
-    };
+        await Promise.allSettled(
+            currentFavorites.map((favorite) => methodologyAPI.removeFromFavorites(
+                detachmentId,
+                favorite.id,
+                TYPE_MAPPING[favorite.tab],
+            )),
+        );
+    }, [detachmentId, favorites]);
 
-    // Загружаем избранное при монтировании
-    useEffect(() => {
-        if (detachmentId) loadFavorites();
-    }, [detachmentId]);
+    const handleRecommendationClick = useCallback((recommendation) => {
+        const nextTab = getRecommendationTab(recommendation.type);
+        setActiveTab(nextTab);
+        setPendingMaterialId(recommendation.id);
+    }, []);
 
-    const isFavorite = (material) => {
-        return favorites.some(fav => fav.key === `${activeTab}_${material.id}`);
-    };
+    const getTabEmoji = useCallback((tabId) => {
+        const tab = TABS.find((item) => item.id === tabId);
+        return tab?.emoji || '📁';
+    }, []);
 
-    const getTabIcon = (tabId) => {
-        const tab = tabs.find(t => t.id === tabId);
-        return tab ? tab.emoji : '📁';
-    };
-
-    const renderMaterialCard = (material) => {
-        const isFav = isFavorite(material);
-        const isRead = isMaterialRead(material);
+    const renderMaterialCard = useCallback((material) => {
+        const favorite = isFavorite(material);
+        const read = isMaterialRead(material);
 
         return (
             <div
                 key={material.id}
-                className={`methodology-card ${isRead ? 'read' : ''}`}
+                className={`methodology-card ${read ? 'read' : ''}`}
                 onClick={() => handleMaterialClick(material)}
             >
                 <div className="card-header">
                     <h4>{material.title}</h4>
                     <div className="card-actions">
-                        {isRead && <span className="read-badge" title="Прочитано">✓</span>}
+                        {read && <span className="read-badge" title="Прочитано">✓</span>}
                         <button
-                            className={`favorite-btn ${isFav ? 'active' : ''}`}
-                            onClick={(e) => toggleFavorite(material, e)}
-                            title={isFav ? 'Удалить из избранного' : 'Добавить в избранное'}
+                            className={`favorite-btn ${favorite ? 'active' : ''}`}
+                            onClick={(event) => toggleFavorite(material, event)}
+                            title={favorite ? 'Убрать из избранного' : 'Добавить в избранное'}
                         >
-                            {isFav ? '★' : '☆'}
+                            {favorite ? '★' : '☆'}
                         </button>
                     </div>
                 </div>
@@ -334,7 +361,7 @@ const MethodologyPanel = ({ detachmentId, currentStage, ageGroup }) => {
                 {activeTab === 'exercises' && (
                     <div className="card-meta">
                         <span className="meta-item">⏱️ {material.duration}</span>
-                        <span className={`meta-item difficulty-${material.difficulty?.toLowerCase()}`}>
+                        <span className={`meta-item difficulty-${String(material.difficulty || '').toLowerCase()}`}>
                             {material.difficulty}
                         </span>
                     </div>
@@ -349,129 +376,136 @@ const MethodologyPanel = ({ detachmentId, currentStage, ageGroup }) => {
                 )}
             </div>
         );
-    };
+    }, [activeTab, handleMaterialClick, isFavorite, isMaterialRead, toggleFavorite]);
+
+    const renderDetailsBlock = useCallback((material) => {
+        if (activeTab === 'games') {
+            return (
+                <>
+                    <div className="details-section">
+                        <h3>Описание</h3>
+                        <p>{material.description}</p>
+                    </div>
+
+                    <div className="details-grid">
+                        <div className="detail-item">
+                            <span className="detail-label">⏱️ Время:</span>
+                            <span className="detail-value">{material.duration}</span>
+                        </div>
+                        <div className="detail-item">
+                            <span className="detail-label">👥 Участников:</span>
+                            <span className="detail-value">{material.players}</span>
+                        </div>
+                        <div className="detail-item">
+                            <span className="detail-label">🎯 Цель:</span>
+                            <span className="detail-value">{material.purpose}</span>
+                        </div>
+                        <div className="detail-item full-width">
+                            <span className="detail-label">📦 Материалы:</span>
+                            <span className="detail-value">{material.materials}</span>
+                        </div>
+                    </div>
+                </>
+            );
+        }
+
+        if (activeTab === 'campfires') {
+            return (
+                <>
+                    <div className="details-section">
+                        <h3>Описание</h3>
+                        <p>{material.description}</p>
+                    </div>
+
+                    <div className="details-grid">
+                        <div className="detail-item">
+                            <span className="detail-label">⏱️ Время:</span>
+                            <span className="detail-value">{material.duration}</span>
+                        </div>
+                        <div className="detail-item">
+                            <span className="detail-label">🎭 Форма:</span>
+                            <span className="detail-value">{material.form}</span>
+                        </div>
+                        <div className="detail-item">
+                            <span className="detail-label">✨ Атмосфера:</span>
+                            <span className="detail-value">{material.atmosphere}</span>
+                        </div>
+                    </div>
+                </>
+            );
+        }
+
+        if (activeTab === 'exercises') {
+            return (
+                <>
+                    <div className="details-section">
+                        <h3>Описание</h3>
+                        <p>{material.description}</p>
+                    </div>
+
+                    <div className="details-grid">
+                        <div className="detail-item">
+                            <span className="detail-label">⏱️ Время:</span>
+                            <span className="detail-value">{material.duration}</span>
+                        </div>
+                        <div className="detail-item">
+                            <span className="detail-label">📊 Сложность:</span>
+                            <span className="detail-value">{material.difficulty}</span>
+                        </div>
+                        <div className="detail-item full-width">
+                            <span className="detail-label">💪 Эффект:</span>
+                            <span className="detail-value">{material.effect}</span>
+                        </div>
+                    </div>
+                </>
+            );
+        }
+
+        return (
+            <>
+                <div className="details-section">
+                    <h3>Описание</h3>
+                    <p>{material.description}</p>
+                </div>
+
+                <div className="details-section">
+                    <h3>Рекомендации</h3>
+                    <p>{material.recommendations}</p>
+                </div>
+            </>
+        );
+    }, [activeTab]);
 
     const renderMaterialDetails = () => {
         if (!selectedMaterial) return null;
 
-        const material = selectedMaterial;
-        const currentTab = activeTab;
-        const isRead = isMaterialRead(material);
-        const isFav = isFavorite(material);
+        const read = isMaterialRead(selectedMaterial);
+        const favorite = isFavorite(selectedMaterial);
 
         return (
             <div className="material-details-overlay" onClick={handleCloseDetails}>
-                <div className="material-details-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="material-details-modal" onClick={(event) => event.stopPropagation()}>
                     <button className="close-btn" onClick={handleCloseDetails}>✕</button>
 
                     <div className="details-header">
-                        <span className="details-emoji">{getTabIcon(currentTab)}</span>
-                        <h2>{material.title}</h2>
-                        {isRead && <span className="read-badge-large">Прочитано ✓</span>}
+                        <span className="details-emoji">{getTabEmoji(activeTab)}</span>
+                        <h2>{selectedMaterial.title}</h2>
+                        {read && <span className="read-badge-large">Прочитано ✓</span>}
                     </div>
 
                     <div className="details-content">
-                        {currentTab === 'games' && (
-                            <>
-                                <div className="details-section">
-                                    <h3>Описание</h3>
-                                    <p>{material.description}</p>
-                                </div>
+                        {renderDetailsBlock(selectedMaterial)}
 
-                                <div className="details-grid">
-                                    <div className="detail-item">
-                                        <span className="detail-label">⏱️ Время:</span>
-                                        <span className="detail-value">{material.duration}</span>
-                                    </div>
-                                    <div className="detail-item">
-                                        <span className="detail-label">👥 Участников:</span>
-                                        <span className="detail-value">{material.players}</span>
-                                    </div>
-                                    <div className="detail-item">
-                                        <span className="detail-label">🎯 Цель:</span>
-                                        <span className="detail-value">{material.purpose}</span>
-                                    </div>
-                                    <div className="detail-item full-width">
-                                        <span className="detail-label">📦 Материалы:</span>
-                                        <span className="detail-value">{material.materials}</span>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {currentTab === 'campfires' && (
-                            <>
-                                <div className="details-section">
-                                    <h3>Описание</h3>
-                                    <p>{material.description}</p>
-                                </div>
-
-                                <div className="details-grid">
-                                    <div className="detail-item">
-                                        <span className="detail-label">⏱️ Время:</span>
-                                        <span className="detail-value">{material.duration}</span>
-                                    </div>
-                                    <div className="detail-item">
-                                        <span className="detail-label">🎭 Форма:</span>
-                                        <span className="detail-value">{material.form}</span>
-                                    </div>
-                                    <div className="detail-item">
-                                        <span className="detail-label">✨ Атмосфера:</span>
-                                        <span className="detail-value">{material.atmosphere}</span>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {currentTab === 'exercises' && (
-                            <>
-                                <div className="details-section">
-                                    <h3>Описание</h3>
-                                    <p>{material.description}</p>
-                                </div>
-
-                                <div className="details-grid">
-                                    <div className="detail-item">
-                                        <span className="detail-label">⏱️ Время:</span>
-                                        <span className="detail-value">{material.duration}</span>
-                                    </div>
-                                    <div className="detail-item">
-                                        <span className="detail-label">📊 Сложность:</span>
-                                        <span className="detail-value">{material.difficulty}</span>
-                                    </div>
-                                    <div className="detail-item full-width">
-                                        <span className="detail-label">💪 Эффект:</span>
-                                        <span className="detail-value">{material.effect}</span>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {currentTab === 'physiological' && (
-                            <>
-                                <div className="details-section">
-                                    <h3>Описание</h3>
-                                    <p>{material.description}</p>
-                                </div>
-
-                                <div className="details-section">
-                                    <h3>Рекомендации</h3>
-                                    <p>{material.recommendations}</p>
-                                </div>
-                            </>
-                        )}
-
-                        {/* Информация об использовании с бэкенда */}
-                        {material.lastUsedAt && (
+                        {selectedMaterial.lastUsedAt && (
                             <div className="details-section usage-info">
                                 <h3>📊 Статистика использования</h3>
                                 <p>
                                     <strong>Последнее использование:</strong>{' '}
-                                    {new Date(material.lastUsedAt).toLocaleDateString('ru-RU')}
+                                    {new Date(selectedMaterial.lastUsedAt).toLocaleDateString('ru-RU')}
                                 </p>
                                 <p>
                                     <strong>Всего использований:</strong>{' '}
-                                    {material.usageCount || 1}
+                                    {selectedMaterial.usageCount || 1}
                                 </p>
                             </div>
                         )}
@@ -479,16 +513,16 @@ const MethodologyPanel = ({ detachmentId, currentStage, ageGroup }) => {
 
                     <div className="details-actions">
                         <button
-                            className={`action-btn ${isRead ? 'secondary' : 'primary'}`}
-                            onClick={(e) => toggleReadStatus(material, e)}
+                            className={`action-btn ${read ? 'secondary' : 'primary'}`}
+                            onClick={(event) => toggleReadStatus(selectedMaterial, event)}
                         >
-                            {isRead ? '✓ Отметить как непрочитанное' : '✓ Отметить как прочитанное'}
+                            {read ? '✓ Отметить как непрочитанное' : '✓ Отметить как прочитанное'}
                         </button>
                         <button
                             className="action-btn secondary"
-                            onClick={(e) => toggleFavorite(material, e)}
+                            onClick={(event) => toggleFavorite(selectedMaterial, event)}
                         >
-                            {isFav ? '★ В избранном' : '☆ В избранное'}
+                            {favorite ? '★ В избранном' : '☆ В избранное'}
                         </button>
                     </div>
                 </div>
@@ -501,34 +535,37 @@ const MethodologyPanel = ({ detachmentId, currentStage, ageGroup }) => {
             <div className="methodology-header">
                 <div className="header-title">
                     <h3>📚 Методические материалы</h3>
-                    {getReadCount() > 0 && (
-                        <span className="read-count">Прочитано: {getReadCount()}</span>
-                    )}
+                    {readCount > 0 && <span className="read-count">Прочитано: {readCount}</span>}
                 </div>
 
-                {recommendations.length > 0 && (
+                {recommendationsLoading ? (
                     <div className="stage-recommendations">
-                        <span className="rec-label">✨ Рекомендовано для этапа:</span>
+                        <span className="rec-label">Подбираем рекомендации для текущего этапа…</span>
+                    </div>
+                ) : recommendations.length > 0 ? (
+                    <div className="stage-recommendations">
+                        <span className="rec-label">Рекомендуем для текущего этапа:</span>
                         <div className="rec-chips">
-                            {recommendations.slice(0, 3).map(rec => (
+                            {recommendations.map((recommendation) => (
                                 <span
-                                    key={`${rec.type}_${rec.id}`}
+                                    key={`${recommendation.type}_${recommendation.id}`}
                                     className="rec-chip"
-                                    onClick={() => handleRecommendationClick(rec)}
+                                    onClick={() => handleRecommendationClick(recommendation)}
                                 >
-                                    {rec.type === 'game' && '🎮'}
-                                    {rec.type === 'campfire' && '🔥'}
-                                    {rec.type === 'exercise' && '🤸'}
-                                    {rec.title}
+                                    {recommendation.type === 'game' && '🎮'}
+                                    {recommendation.type === 'campfire' && '🔥'}
+                                    {recommendation.type === 'exercise' && '🤸'}
+                                    {recommendation.type === 'physiological' && '🧬'}
+                                    {recommendation.title}
                                 </span>
                             ))}
                         </div>
                     </div>
-                )}
+                ) : null}
             </div>
 
             <div className="methodology-tabs">
-                {tabs.map(tab => (
+                {TABS.map((tab) => (
                     <button
                         key={tab.id}
                         className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
@@ -544,7 +581,7 @@ const MethodologyPanel = ({ detachmentId, currentStage, ageGroup }) => {
                 {loading ? (
                     <div className="methodology-loading">
                         <div className="loading-spinner-small"></div>
-                        <p>Загрузка материалов...</p>
+                        <p>Загрузка материалов…</p>
                     </div>
                 ) : error ? (
                     <div className="methodology-error">
@@ -557,11 +594,11 @@ const MethodologyPanel = ({ detachmentId, currentStage, ageGroup }) => {
                 ) : materials.length === 0 ? (
                     <div className="methodology-empty">
                         <span className="empty-emoji">📭</span>
-                        <p>Нет материалов для этого раздела</p>
+                        <p>Для этого раздела пока нет материалов</p>
                     </div>
                 ) : (
                     <div className="materials-grid">
-                        {materials.map(material => renderMaterialCard(material))}
+                        {materials.map((material) => renderMaterialCard(material))}
                     </div>
                 )}
             </div>
@@ -578,25 +615,26 @@ const MethodologyPanel = ({ detachmentId, currentStage, ageGroup }) => {
                             Очистить всё
                         </button>
                     </div>
-                    {tabs.filter(tab => favorites.some(f => f.tab === tab.id)).map(tab => (
+
+                    {favoritesByTab.map((tab) => (
                         <div key={tab.id} className="favorites-group">
                             <div className="favorites-group-label">{tab.emoji} {tab.label}</div>
                             <div className="favorites-list">
                                 {favorites
-                                    .filter(fav => fav.tab === tab.id)
-                                    .map(fav => (
+                                    .filter((favorite) => favorite.tab === tab.id)
+                                    .map((favorite) => (
                                         <div
-                                            key={fav.key}
-                                            className={`favorite-item${fav.tab === activeTab ? ' favorite-item-active' : ''}`}
-                                            onClick={() => { setActiveTab(fav.tab); handleMaterialClick(fav); }}
+                                            key={favorite.key}
+                                            className={`favorite-item${favorite.tab === activeTab ? ' favorite-item-active' : ''}`}
+                                            onClick={() => {
+                                                setActiveTab(favorite.tab);
+                                                setSelectedMaterial(favorite);
+                                            }}
                                         >
-                                            <span className="fav-title">{fav.title}</span>
+                                            <span className="fav-title">{favorite.title}</span>
                                             <button
                                                 className="fav-remove"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    toggleFavorite(fav, e);
-                                                }}
+                                                onClick={(event) => toggleFavorite(favorite, event)}
                                             >
                                                 ✕
                                             </button>
@@ -611,6 +649,4 @@ const MethodologyPanel = ({ detachmentId, currentStage, ageGroup }) => {
             {renderMaterialDetails()}
         </div>
     );
-};
-
-export default MethodologyPanel;
+}

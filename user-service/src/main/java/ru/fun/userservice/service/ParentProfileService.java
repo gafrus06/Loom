@@ -31,6 +31,7 @@ public class ParentProfileService {
 
         entity.setEmergencyContactName(req.getEmergencyContactName());
         entity.setEmergencyContactPhone(req.getEmergencyContactPhone());
+        entity.setEmergencyContactRelation(req.getEmergencyContactRelation());
         entity.setAddress(req.getAddress());
         entity.setNotes(req.getNotes());
 

@@ -9,6 +9,7 @@ import ru.funkids.newsfeedservice.client.FileStorageClient;
 import ru.funkids.newsfeedservice.dto.client.DownloadUrlResponse;
 import ru.funkids.newsfeedservice.dto.client.DownloadUrlsRequest;
 import ru.funkids.newsfeedservice.dto.client.DownloadUrlsResponse;
+import ru.funkids.newsfeedservice.dto.client.UploadUrlResponse;
 
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,16 @@ import java.util.UUID;
 public class MediaController {
 
     private final FileStorageClient fileStorageClient;
+
+    @PostMapping("/upload-url")
+    @PreAuthorize("hasAnyRole('COUNSELOR', 'ADMIN')")
+    public ResponseEntity<UploadUrlResponse> generateUploadUrl(
+            @RequestParam String filename,
+            @RequestParam String contentType) {
+        return ResponseEntity.ok(
+                fileStorageClient.generateUploadUrl("news-feed-service", "post", filename, contentType)
+        );
+    }
 
     /**
      * Одиночный presigned URL — используется в Post.js:

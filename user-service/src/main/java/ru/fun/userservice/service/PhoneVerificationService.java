@@ -8,10 +8,10 @@ import org.springframework.web.server.ResponseStatusException;
 import ru.fun.userservice.dto.notification.PhoneVerificationConfirmRequest;
 import ru.fun.userservice.dto.notification.PhoneVerificationStartEvent;
 import ru.fun.userservice.dto.notification.VerifyResponse;
-import ru.fun.userservice.kafka.NotificationEventPublisher;
 import ru.fun.userservice.repository.UserProfileRepository;
 import ru.fun.userservice.rest.client.NotificationClient;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -22,7 +22,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PhoneVerificationService {
 
-    private final NotificationEventPublisher notificationEventPublisher;
+    private final PhoneVerificationOutboxService phoneVerificationOutboxService;
     private final NotificationClient notificationClient;
     private final UserProfileService userProfileService;
     private final UserProfileRepository userProfileRepository;
@@ -31,11 +31,16 @@ public class PhoneVerificationService {
         PhoneVerificationStartEvent evt = new PhoneVerificationStartEvent();
         evt.setUserId(userId);
         evt.setPhone(phone);
-        notificationEventPublisher.publish(evt);
+        evt.setEventId(UUID.randomUUID());
+        evt.setCorrelationId(evt.getEventId());
+        evt.setOccurredAt(Instant.now());
+        evt.setVersion(1);
+        phoneVerificationOutboxService.enqueue(evt);
     }
 
     @Transactional
     public VerifyResponse confirmVerification(UUID userId, PhoneVerificationConfirmRequest req) {
+        req.setUserId(userId);
         VerifyResponse vr = notificationClient.verify(req);
 
         if (vr.isVerified()) {

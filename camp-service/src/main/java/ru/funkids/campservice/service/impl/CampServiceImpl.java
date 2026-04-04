@@ -37,6 +37,7 @@ public class CampServiceImpl implements CampService {
                 .name(dto.getName())
                 .location(dto.getLocation())
                 .description(dto.getDescription())
+                .photoFileId(dto.getPhotoFileId())
                 .ownerId(ownerId)
                 .build();
 
@@ -70,6 +71,7 @@ public class CampServiceImpl implements CampService {
         if (dto.getName()        != null) camp.setName(dto.getName());
         if (dto.getLocation()    != null) camp.setLocation(dto.getLocation());
         if (dto.getDescription() != null) camp.setDescription(dto.getDescription());
+        if (dto.getPhotoFileId() != null) camp.setPhotoFileId(dto.getPhotoFileId());
 
         return mapToDto(campRepository.save(camp));
     }
@@ -122,6 +124,7 @@ public class CampServiceImpl implements CampService {
                     .name(camp.getName())
                     .location(camp.getLocation())
                     .description(camp.getDescription())
+                    .photoFileId(camp.getPhotoFileId())
                     .ownerId(camp.getOwnerId())
                     .createdAt(camp.getCreatedAt())
                     .updatedAt(camp.getUpdatedAt())
@@ -143,6 +146,7 @@ public class CampServiceImpl implements CampService {
                         .name(camp.getName())
                         .location(camp.getLocation())
                         .description(camp.getDescription())
+                        .photoFileId(camp.getPhotoFileId())
                         .ownerId(camp.getOwnerId())
                         .createdAt(camp.getCreatedAt())
                         .updatedAt(camp.getUpdatedAt())
@@ -207,6 +211,7 @@ public class CampServiceImpl implements CampService {
                             .name(camp.getName())
                             .location(camp.getLocation())
                             .description(camp.getDescription())
+                            .photoFileId(camp.getPhotoFileId())
                             .ownerId(camp.getOwnerId())
                             .createdAt(camp.getCreatedAt())
                             .updatedAt(camp.getUpdatedAt())
@@ -233,6 +238,7 @@ public class CampServiceImpl implements CampService {
                 .name(camp.getName())
                 .location(camp.getLocation())
                 .description(camp.getDescription())
+                .photoFileId(camp.getPhotoFileId())
                 .ownerId(camp.getOwnerId())
                 .createdAt(camp.getCreatedAt())
                 .updatedAt(camp.getUpdatedAt())

@@ -3,10 +3,11 @@ package ru.fun.authservice.kafka;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import ru.fun.authservice.dto.UserRegisteredEvent;
 import ru.fun.authservice.dto.UserRoleChangedEvent;
+
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -18,32 +19,17 @@ public class UserEventProducer {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    @Async
-    public void publishUserRegistered(UserRegisteredEvent event) {
+    public void publishUserRegistered(UserRegisteredEvent event) throws Exception {
         kafkaTemplate.send(TOPIC_USER_REGISTERED, event.getUserId(), event)
-                .whenComplete((result, ex) -> {
-                    if (ex == null) {
-                        log.info("✅ Sent UserRegisteredEvent for userId={} to topic={}",
-                                event.getUserId(), TOPIC_USER_REGISTERED);
-                    } else {
-                        log.error("❌ Failed to send UserRegisteredEvent for userId={} to topic={}",
-                                event.getUserId(), TOPIC_USER_REGISTERED, ex);
-                    }
-                });
+                .get(10, TimeUnit.SECONDS);
+        log.info("Sent UserRegisteredEvent for userId={} to topic={}",
+                event.getUserId(), TOPIC_USER_REGISTERED);
     }
 
-    @Async
-    public void publishUserRoleChanged(UserRoleChangedEvent event) {
+    public void publishUserRoleChanged(UserRoleChangedEvent event) throws Exception {
         kafkaTemplate.send(TOPIC_USER_ROLE_ASSIGNED, event.getUserId(), event)
-                .whenComplete((result, ex) -> {
-                    if (ex == null) {
-                        log.info("✅ Sent UserRoleChangedEvent for userId={} to topic={}",
-                                event.getUserId(), TOPIC_USER_ROLE_ASSIGNED);
-                    } else {
-                        log.error("❌ Failed to send UserRoleChangedEvent for userId={} to topic={}",
-                                event.getUserId(), TOPIC_USER_ROLE_ASSIGNED, ex);
-                    }
-                });
+                .get(10, TimeUnit.SECONDS);
+        log.info("Sent UserRoleChangedEvent for userId={} to topic={}",
+                event.getUserId(), TOPIC_USER_ROLE_ASSIGNED);
     }
-
 }

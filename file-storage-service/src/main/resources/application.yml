@@ -19,6 +19,9 @@ spring:
 
 # jwt.secret убран — сервис больше не парсит JWT
 
+internal-auth:
+  secret: ${INTERNAL_AUTH_SECRET:dev-internal-secret}
+
 eureka:
   client:
     service-url:

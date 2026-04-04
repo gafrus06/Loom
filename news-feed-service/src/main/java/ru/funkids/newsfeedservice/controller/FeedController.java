@@ -48,4 +48,13 @@ public class FeedController {
 
         return ResponseEntity.ok(feedService.getCampFeed(campId, pageable));
     }
+
+    @GetMapping("/camps/{campId}/moderation/pending")
+    @PreAuthorize("hasAnyRole('ADMIN', 'COUNSELOR')")
+    public ResponseEntity<PageResponse<PostResponse>> getPendingModerationFeed(
+            @PathVariable UUID campId,
+            @PageableDefault(size = 20) Pageable pageable) {
+
+        return ResponseEntity.ok(feedService.getPendingModerationFeed(campId, pageable));
+    }
 }

@@ -16,25 +16,18 @@ public interface DetachmentMembershipRepository extends JpaRepository<Detachment
 
     List<DetachmentMembership> findByDetachmentId(UUID detachmentId);
     List<DetachmentMembership> findByChildId(UUID childId);
+    List<DetachmentMembership> findByDetachmentIdIn(List<UUID> detachmentIds);
 
-    @Query("SELECT dm FROM DetachmentMembership dm " +
-            "WHERE dm.detachment.id = :detachmentId " +
-            "AND dm.leftAt IS NULL")
+    @Query("SELECT dm FROM DetachmentMembership dm WHERE dm.detachment.id = :detachmentId AND dm.leftAt IS NULL")
     List<DetachmentMembership> findActiveByDetachmentId(@Param("detachmentId") UUID detachmentId);
-    /**
-     * Найти активные членства детей (где leftAt = null)
-     * DetachmentMembership использует @ManyToOne Child, поэтому обращаемся через child.id
-     */
+
     @Query("SELECT dm FROM DetachmentMembership dm WHERE dm.child.id IN :childIds AND dm.leftAt IS NULL")
     List<DetachmentMembership> findActiveByChildIds(@Param("childIds") Set<UUID> childIds);
 
-    /**
-     * Найти все членства детей (включая завершённые)
-     */
     @Query("SELECT dm FROM DetachmentMembership dm WHERE dm.child.id IN :childIds")
     List<DetachmentMembership> findByChildIds(@Param("childIds") Set<UUID> childIds);
-    Optional<DetachmentMembership> findByChildIdAndLeftAtIsNull(UUID childId);
 
+    Optional<DetachmentMembership> findByChildIdAndLeftAtIsNull(UUID childId);
 
     @Query("SELECT dm FROM DetachmentMembership dm WHERE dm.child.id = :childId AND dm.leftAt IS NULL")
     Optional<DetachmentMembership> findActiveMembershipByChildId(@Param("childId") UUID childId);

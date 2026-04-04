@@ -18,7 +18,8 @@ import java.util.UUID;
                 @Index(name = "idx_posts_author_id",     columnList = "author_id"),
                 @Index(name = "idx_posts_pinned_order",  columnList = "is_pinned, pinned_order DESC, created_at DESC"),
                 @Index(name = "idx_posts_detachment_id", columnList = "detachment_id"),
-                @Index(name = "idx_posts_created_at",    columnList = "created_at DESC")
+                @Index(name = "idx_posts_created_at",    columnList = "created_at DESC"),
+                @Index(name = "idx_posts_moderation_status", columnList = "moderation_status, camp_id, created_at DESC")
         })
 @Getter
 @Setter
@@ -46,6 +47,9 @@ public class Post {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
+    @Column(name = "content_json", columnDefinition = "TEXT")
+    private String contentJson;
+
     // Называем поле "pinned", а не "isPinned" — иначе Lombok генерирует геттер isPinned(),
     // а Jackson ищет getIsPinned() и не находит его → поле не сериализуется.
     // С именем "pinned" Lombok генерирует isPinned() (boolean-геттер) и setPinned(),
@@ -56,6 +60,11 @@ public class Post {
 
     @Column(name = "pinned_order")
     private Integer pinnedOrder;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "moderation_status", nullable = false, length = 40)
+    @Builder.Default
+    private PostModerationStatus moderationStatus = PostModerationStatus.PUBLISHED;
 
     // BatchSize решает N+1 при загрузке списка постов:
     // вместо N запросов SELECT media WHERE post_id=? Hibernate делает
@@ -73,6 +82,9 @@ public class Post {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
+
+    @Version
+    private Long version;
 
     public void addMedia(PostMedia mediaItem) {
         media.add(mediaItem);

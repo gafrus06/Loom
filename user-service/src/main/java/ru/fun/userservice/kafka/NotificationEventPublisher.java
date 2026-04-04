@@ -2,6 +2,7 @@ package ru.fun.userservice.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -15,6 +16,7 @@ import ru.fun.userservice.dto.notification.PhoneVerificationStartEvent;
 @RequiredArgsConstructor
 public class NotificationEventPublisher {
 
+    @Qualifier("kafkaTemplate")
     private final KafkaTemplate<String, String> kafka;
     private final ObjectMapper objectMapper;
 
@@ -23,7 +25,7 @@ public class NotificationEventPublisher {
 
     public void publish(PhoneVerificationStartEvent evt) {
         try {
-            kafka.send(topic, evt.getUserId().toString(), objectMapper.writeValueAsString(evt));
+            kafka.send(topic, evt.getUserId().toString(), objectMapper.writeValueAsString(evt)).get();
         } catch (Exception e) {
             throw new RuntimeException("Failed to publish phone verification start event", e);
         }

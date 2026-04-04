@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import lottie from 'lottie-web';
 import pako from 'pako';
 
@@ -23,14 +23,17 @@ function fileToKey(filename) {
     return ':' + String(num).padStart(6, '0') + ':';
 }
 
-function getType(filename) {
-    const ext = filename.split('.').pop().toLowerCase();
-    if (ext === 'tgs') return 'tgs';
-    if (ext === 'webm') return 'webm';
-    return 'webp';
+function getBaseName(filename) {
+    return filename.replace(/\.[^.]+$/, '');
 }
 
 export const CUSTOM_EMOJI = {};
+const previewByBaseName = new Map();
+
+webpContext.keys().forEach(path => {
+    const filename = path.replace('./', '');
+    previewByBaseName.set(getBaseName(filename), webpContext(path));
+});
 
 webmContext.keys().forEach(path => {
     const filename = path.replace('./', '');
@@ -77,14 +80,32 @@ const atomicStyle = (size) => ({
     lineHeight: 1,
 });
 
-const TGSPlayer = memo(({ src, size }) => {
+const placeholderStyle = (size) => ({
+    width: size,
+    height: size,
+    borderRadius: '999px',
+    background: '#050505',
+    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.04)',
+});
+
+const softPlaceholderStyle = (size) => ({
+    width: size,
+    height: size,
+    borderRadius: '999px',
+    background: 'rgba(255,255,255,0.08)',
+    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.06)',
+});
+
+const TGSPlayer = memo(({ src, size, animate = true }) => {
     const ref = useRef(null);
     const animRef = useRef(null);
+    const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
         const el = ref.current;
         if (!el) return;
         let cancelled = false;
+        setLoaded(false);
 
         loadTGS(src).then(data => {
             if (cancelled || !el) return;
@@ -93,9 +114,16 @@ const TGSPlayer = memo(({ src, size }) => {
                 animationData: JSON.parse(JSON.stringify(data)),
                 renderer: 'canvas',
                 loop: true,
-                autoplay: true,
+                autoplay: false,
                 rendererSettings: { clearCanvas: true },
             });
+
+            if (animate) {
+                animRef.current.play();
+            } else {
+                animRef.current.goToAndStop(0, true);
+            }
+            setLoaded(true);
         }).catch(err => console.warn('TGS:', err));
 
         return () => {
@@ -103,25 +131,86 @@ const TGSPlayer = memo(({ src, size }) => {
             animRef.current?.destroy();
             animRef.current = null;
         };
-    }, [src]);
+    }, [src, animate]);
+
+    useEffect(() => {
+        if (!animRef.current) return;
+        if (animate) {
+            animRef.current.play();
+        } else {
+            animRef.current.goToAndStop(0, true);
+        }
+    }, [animate]);
 
     return (
         <span
             contentEditable={false}
             style={atomicStyle(size)}
         >
-            <div
+            <span
                 ref={ref}
-                style={{ width: size, height: size, pointerEvents: 'none' }}
+                style={{
+                    display: 'block',
+                    width: size,
+                    height: size,
+                    pointerEvents: 'none',
+                    opacity: loaded ? 1 : 0,
+                }}
             />
         </span>
     );
 });
 
-const TGSEmoji = memo(({ name, src, type, size = 28 }) => {
-    if (type === 'tgs') return <TGSPlayer src={src} size={size} />;
+const TGSEmoji = memo(({
+    name,
+    src,
+    type,
+    size = 28,
+    animate = true,
+    mountAnimation = true,
+    previewSrc = null,
+    filename = '',
+    fallbackMode = 'placeholder',
+}) => {
+    const resolvedPreview = useMemo(() => {
+        if (previewSrc) return previewSrc;
+        if (!filename) return null;
+        return previewByBaseName.get(getBaseName(filename)) || null;
+    }, [previewSrc, filename]);
 
     const url = typeof src === 'string' ? src : src.default || src;
+
+    const previewElement = resolvedPreview ? (
+        <span
+            contentEditable={false}
+            title={name}
+            style={atomicStyle(size)}
+        >
+            <img
+                src={typeof resolvedPreview === 'string' ? resolvedPreview : resolvedPreview.default || resolvedPreview}
+                width={size}
+                height={size}
+                alt={name}
+                loading="lazy"
+                style={{ display: 'block', objectFit: 'contain', pointerEvents: 'none' }}
+            />
+        </span>
+    ) : (
+        <span
+            contentEditable={false}
+            title={name}
+            style={atomicStyle(size)}
+        >
+            <span style={fallbackMode === 'soft' ? softPlaceholderStyle(size) : placeholderStyle(size)} />
+        </span>
+    );
+
+    if (type === 'tgs') {
+        if (!mountAnimation) return previewElement;
+        return <TGSPlayer src={src} size={size} animate={animate} />;
+    }
+
+    if (!mountAnimation || !animate) return previewElement;
 
     if (type === 'webm') {
         return (
@@ -134,10 +223,11 @@ const TGSEmoji = memo(({ name, src, type, size = 28 }) => {
                     src={url}
                     width={size}
                     height={size}
-                    autoPlay
+                    autoPlay={animate}
                     loop
                     muted
                     playsInline
+                    preload={animate ? 'metadata' : 'none'}
                     style={{ display: 'block', objectFit: 'contain', pointerEvents: 'none' }}
                 />
             </span>

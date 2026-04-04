@@ -18,11 +18,13 @@ public class VerificationController {
 
     @PostMapping("/verify")
     public ResponseEntity<VerifyResponse> verify(@Valid @RequestBody VerifyRequest req) {
-        boolean ok = otpService.verify(req.getPhone(), req.getCode());
+        boolean ok = otpService.verify(req.getUserId(), req.getPhone(), req.getCode());
         return ResponseEntity.ok(new VerifyResponse(ok));
     }
 
     @GetMapping("/ttl")
-    public long ttl(@RequestParam String phone) { return otpService.ttl(phone); }
+    public long ttl(@RequestParam java.util.UUID userId, @RequestParam String phone) {
+        return otpService.ttl(userId, phone);
+    }
 }
 

@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import ru.funkids.campservice.entity.StaffSubRole;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,11 +24,16 @@ public class CampMemberAssignDto {
     private UUID userId;
 
     /**
-     * Смены, к которым нужно привязать вожатого.
+     * Смены, к которым нужно привязать сотрудника.
      * Может содержать одну или несколько смен.
-     * При повторном вызове новые смены добавляются к уже существующим
-     * (не заменяют их).
      */
     @NotEmpty(message = "Необходимо указать хотя бы одну смену")
     private List<UUID> sessionIds;
+
+    /**
+     * Контекстная роль сотрудника в рамках указанных смен.
+     * По умолчанию обычный вожатый.
+     */
+    @Builder.Default
+    private StaffSubRole subRole = StaffSubRole.COUNSELOR;
 }

@@ -1,0 +1,21 @@
+services:
+  notification-db:
+    image: postgres:17
+    container_name: loom-notification-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: notificationdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5436:5432"
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notificationdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  notification-db-data:

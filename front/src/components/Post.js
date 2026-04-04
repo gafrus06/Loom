@@ -1,11 +1,15 @@
-// src/components/news/Post.jsx
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authFetch, getCurrentUser } from '../api/auth';
-import * as newsAPI from '../api/news';
+import { getCurrentUser } from '../services/auth';
+import * as newsAPI from '../services/news';
 import AnimatedText from './AnimatedText';
-import '../styles/news.css';
-import '../styles/news-video.css';
+import { useAppModal } from './AppModalProvider';
+import PostContentRenderer from './PostContentRenderer';
+import EditRichPostModal from './EditRichPostModal';
+import { usePostMediaUrls } from '../hooks/usePostMediaUrls';
+import pinIcon from '../assets/news/zak.png';
+import './Post.css';
+
 
 function CustomVideoPlayer({ src }) {
     const videoRef    = useRef(null);
@@ -39,12 +43,12 @@ function CustomVideoPlayer({ src }) {
 
     const onEnded = () => setPlaying(false);
 
-    // Убираем нативные контролы браузера программно
+    // Р Р€Р В±Р С‘РЎР‚Р В°Р ВµР С Р Р…Р В°РЎвЂљР С‘Р Р†Р Р…РЎвЂ№Р Вµ Р С”Р С•Р Р…РЎвЂљРЎР‚Р С•Р В»РЎвЂ№ Р В±РЎР‚Р В°РЎС“Р В·Р ВµРЎР‚Р В° Р С—РЎР‚Р С•Р С–РЎР‚Р В°Р СР СР Р…Р С•
     useEffect(() => {
         const v = videoRef.current;
         if (!v) return;
         v.removeAttribute('controls');
-        // Отключаем Picture-in-Picture через API если доступен
+        // Р С›РЎвЂљР С”Р В»РЎР‹РЎвЂЎР В°Р ВµР С Picture-in-Picture РЎвЂЎР ВµРЎР‚Р ВµР В· API Р ВµРЎРѓР В»Р С‘ Р Т‘Р С•РЎРѓРЎвЂљРЎС“Р С—Р ВµР Р…
         if ('disablePictureInPicture' in v) v.disablePictureInPicture = true;
     }, []);
 
@@ -88,7 +92,7 @@ function CustomVideoPlayer({ src }) {
                    disablePictureInPicture
                    controlsList="nodownload nofullscreen noremoteplayback"
             />
-            {/* Прозрачный перехватчик — блокирует нативные контролы Яндекс/Chrome */}
+            {/* Р СџРЎР‚Р С•Р В·РЎР‚Р В°РЎвЂЎР Р…РЎвЂ№Р в„– Р С—Р ВµРЎР‚Р ВµРЎвЂ¦Р Р†Р В°РЎвЂљРЎвЂЎР С‘Р С” РІР‚вЂќ Р В±Р В»Р С•Р С”Р С‘РЎР‚РЎС“Р ВµРЎвЂљ Р Р…Р В°РЎвЂљР С‘Р Р†Р Р…РЎвЂ№Р Вµ Р С”Р С•Р Р…РЎвЂљРЎР‚Р С•Р В»РЎвЂ№ Р Р‡Р Р…Р Т‘Р ВµР С”РЎРѓ/Chrome */}
             <div className="cvp-blocker" onClick={togglePlay} onContextMenu={e => e.preventDefault()} />
 
             {!playing && (
@@ -140,99 +144,8 @@ function CustomVideoPlayer({ src }) {
     );
 }
 
-// ── Модалка редактирования ────────────────────────────────────────────────────
-function EditPostModal({ post, isOpen, onClose, onUpdate }) {
-    const [title, setTitle] = useState(post.title || '');
-    const [content, setContent] = useState(post.content || '');
-    const [newImages, setNewImages] = useState([]);
-    const [newPreviews, setNewPreviews] = useState([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const fileInputRef = useRef(null);
-    const modalRef = useRef(null);
+// РІвЂќР‚РІвЂќР‚ Р СљР С•Р Т‘Р В°Р В»Р С”Р В° РЎР‚Р ВµР Т‘Р В°Р С”РЎвЂљР С‘РЎР‚Р С•Р Р†Р В°Р Р…Р С‘РЎРЏ РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 
-    useEffect(() => {
-        if (isOpen) { setTitle(post.title || ''); setContent(post.content || ''); setNewImages([]); setNewPreviews([]); }
-    }, [isOpen, post]);
-
-    useEffect(() => {
-        const h = (e) => { if (modalRef.current && !modalRef.current.contains(e.target)) onClose(); };
-        if (isOpen) document.addEventListener('mousedown', h);
-        return () => document.removeEventListener('mousedown', h);
-    }, [isOpen, onClose]);
-
-    useEffect(() => {
-        if (!isOpen) return;
-        const html = document.documentElement, body = document.body;
-        const scrollY = window.scrollY;
-        const prevBO = body.style.overflow, prevHO = html.style.overflow;
-        body.style.overflow = 'hidden'; html.style.overflow = 'hidden';
-        body.style.position = 'fixed'; body.style.top = `-${scrollY}px`; body.style.width = '100%';
-        const pt = (e) => e.preventDefault();
-        document.addEventListener('touchmove', pt, { passive: false });
-        return () => {
-            body.style.overflow = prevBO; html.style.overflow = prevHO;
-            body.style.position = ''; body.style.top = ''; body.style.width = '';
-            window.scrollTo(0, scrollY);
-            document.removeEventListener('touchmove', pt);
-        };
-    }, [isOpen]);
-
-    const handleImageChange = (e) => {
-        const files = Array.from(e.target.files);
-        if (files.length + newImages.length > 10) { alert('Максимум 10 фото'); return; }
-        setNewImages(p => [...p, ...files]);
-        files.forEach(f => { const r = new FileReader(); r.onloadend = () => setNewPreviews(p => [...p, r.result]); r.readAsDataURL(f); });
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!content.trim()) return;
-        setIsSubmitting(true);
-        try {
-            const updated = await newsAPI.updatePost(post.id, { title: title.trim() || null, content: content.trim() }, newImages);
-            onUpdate?.(updated); onClose();
-        } catch (err) { alert('Ошибка: ' + err.message); }
-        finally { setIsSubmitting(false); }
-    };
-
-    if (!isOpen) return null;
-    return (
-        <div className="modal-overlay" style={{ zIndex: 1100 }}>
-            <div className="modal-content create-post-modal" ref={modalRef}>
-                <div className="modal-header">
-                    <h2>Редактировать пост</h2>
-                    <button className="modal-close-btn" onClick={onClose}>✕</button>
-                </div>
-                <form onSubmit={handleSubmit}>
-                    <input type="text" className="create-post-title-input" placeholder="Заголовок" value={title} onChange={e => setTitle(e.target.value)} />
-                    <textarea className="create-post-textarea" placeholder="Текст..." value={content} onChange={e => setContent(e.target.value)} required rows="5" />
-                    {newPreviews.length > 0 && (
-                        <div className="image-previews">
-                            {newPreviews.map((p, i) => (
-                                <div key={i} className="image-preview">
-                                    <img src={p} alt="" />
-                                    <button type="button" className="remove-image" onClick={() => { setNewImages(prev => prev.filter((_,j)=>j!==i)); setNewPreviews(prev => prev.filter((_,j)=>j!==i)); }}>✕</button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    <div className="create-post-actions">
-                        <div className="create-post-tools">
-                            <button type="button" className="tool-btn" onClick={() => fileInputRef.current?.click()}>📷 Добавить фото</button>
-                            <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleImageChange} style={{ display: 'none' }} />
-                        </div>
-                        <div className="form-actions">
-                            <button type="button" className="btn-modal-cancel" onClick={onClose} disabled={isSubmitting}>Отмена</button>
-                            <button type="submit" className="btn-modal-submit" disabled={isSubmitting || !content.trim()}>{isSubmitting ? 'Сохранение...' : 'Сохранить'}</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-}
-
-// ── Анимированная кнопка лайка ────────────────────────────────────────────────
 function AnimatedLikeButton({ liked, count, onClick }) {
     const [burst, setBurst] = useState(false);
     const [particles, setParticles] = useState([]);
@@ -241,7 +154,7 @@ function AnimatedLikeButton({ liked, count, onClick }) {
         e.stopPropagation();
         onClick?.();
         if (!liked) {
-            const emojis = ['❤️', '✨', '💫', '⭐', '💥'];
+            const emojis = ['\u2764\uFE0F', '\u2728', '\u{1F4AB}', '\u2B50', '\u{1F525}'];
             setParticles(Array.from({ length: 6 }, (_, i) => ({
                 id: Date.now() + i,
                 emoji: emojis[Math.floor(Math.random() * emojis.length)],
@@ -268,8 +181,21 @@ function AnimatedLikeButton({ liked, count, onClick }) {
     );
 }
 
-// ── Модалка просмотра ─────────────────────────────────────────────────────────
-function PostViewModal({ post, isOpen, onClose, imageUrls, onLike, onEdit, onDelete, canEdit, canPin, onPin, showPinControls }) {
+// РІвЂќР‚РІвЂќР‚ Р СљР С•Р Т‘Р В°Р В»Р С”Р В° Р С—РЎР‚Р С•РЎРѓР СР С•РЎвЂљРЎР‚Р В° РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+function PostViewModal({
+    post,
+    isOpen,
+    onClose,
+    imageUrls,
+    onLike,
+    onEdit,
+    onDelete,
+    canEdit,
+    canPin,
+    onPin,
+    showPinControls,
+    hideDeleteAction = false
+}) {
     const navigate = useNavigate();
     const [activeIdx, setActiveIdx] = useState(0);
 
@@ -309,17 +235,22 @@ function PostViewModal({ post, isOpen, onClose, imageUrls, onLike, onEdit, onDel
     const formatDate = (d) => {
         const date = new Date(d), now = new Date(), diff = now - date;
         if (diff < 60000) return 'только что';
-        if (diff < 3600000) { const m = Math.floor(diff/60000); return `${m} ${m===1?'минуту':m<5?'минуты':'минут'} назад`; }
-        if (diff < 86400000) { const h = Math.floor(diff/3600000); return `${h} ${h===1?'час':h<5?'часа':'часов'} назад`; }
+        if (diff < 3600000) { const m = Math.floor(diff / 60000); return `${m} ${m === 1 ? 'минуту' : m < 5 ? 'минуты' : 'минут'} назад`; }
+        if (diff < 86400000) { const h = Math.floor(diff / 3600000); return `${h} ${h === 1 ? 'час' : h < 5 ? 'часа' : 'часов'} назад`; }
         return date.toLocaleDateString('ru-RU', { day:'numeric', month:'long', year:'numeric' });
     };
 
     return (
         <div className="modal-overlay post-view-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
             <div className="pvm-wrap">
-                <button className="post-view-close" onClick={onClose}>✕</button>
+                {isPinned && showPinControls && (
+                    <div className="post-view-pin" title="Закрепленный пост">
+                        <img src={pinIcon} alt="" className="post-view-pin-icon" />
+                    </div>
+                )}
+                <button className="post-view-close" onClick={onClose}>×</button>
 
-                {/* Левая часть — медиа */}
+                {/* Р вЂєР ВµР Р†Р В°РЎРЏ РЎвЂЎР В°РЎРѓРЎвЂљРЎРЉ РІР‚вЂќ Р СР ВµР Т‘Р С‘Р В° */}
                 {allMedia.length > 0 && (
                     <div className="pvm-media">
                         <div className="pvm-media-main">
@@ -350,9 +281,9 @@ function PostViewModal({ post, isOpen, onClose, imageUrls, onLike, onEdit, onDel
                     </div>
                 )}
 
-                {/* Правая часть — контент */}
+                {/* Р СџРЎР‚Р В°Р Р†Р В°РЎРЏ РЎвЂЎР В°РЎРѓРЎвЂљРЎРЉ РІР‚вЂќ Р С”Р С•Р Р…РЎвЂљР ВµР Р…РЎвЂљ */}
                 <div className={`pvm-content ${allMedia.length === 0 ? 'no-media' : ''}`}>
-                    <div className="pvm-author" onClick={() => { navigate(`/user/${post.author?.id}`); onClose(); }}>
+                    <div className="pvm-author" onClick={() => { navigate(`/users/${post.author?.id}`); onClose(); }}>
                         <div className="post-author-avatar">
                             {post.author?.avatarUrl
                                 ? <img src={post.author.avatarUrl} alt="" />
@@ -360,17 +291,17 @@ function PostViewModal({ post, isOpen, onClose, imageUrls, onLike, onEdit, onDel
                         </div>
                         <div className="post-author-info">
                             <span className="post-author-name">{post.author?.firstName} {post.author?.lastName}</span>
-                            <span className="post-meta">{post.camp?.name}{post.detachment?.name ? ` · ${post.detachment.name}` : ''}</span>
+                            <span className="post-meta">{post.camp?.name}{post.detachment?.name ? ` • ${post.detachment.name}` : ''}</span>
                         </div>
                     </div>
 
                     <div className="pvm-body">
                         {post.title && <h3 className="post-title"><AnimatedText text={post.title} size={22} /></h3>}
-                        <p className="post-text"><AnimatedText text={post.content} size={22} /></p>
+                        <PostContentRenderer content={post.content} contentJson={post.contentJson} className="post-text post-text-rich" />
                     </div>
 
                     <div className="pvm-actions">
-                        {/* Лайк слева */}
+                        {/* Р вЂєР В°Р в„–Р С” РЎРѓР В»Р ВµР Р†Р В° */}
                         <button className={`post-action-btn like-btn ${post.userInteraction?.liked ? 'active' : ''}`} onClick={onLike}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill={post.userInteraction?.liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
                                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -378,7 +309,7 @@ function PostViewModal({ post, isOpen, onClose, imageUrls, onLike, onEdit, onDel
                             {post.stats?.likesCount > 0 && <span>{post.stats.likesCount}</span>}
                         </button>
 
-                        {/* Три точки — меню действий */}
+                        {/* Р СћРЎР‚Р С‘ РЎвЂљР С•РЎвЂЎР С”Р С‘ РІР‚вЂќ Р СР ВµР Р…РЎР‹ Р Т‘Р ВµР в„–РЎРѓРЎвЂљР Р†Р С‘Р в„– */}
                         {(canEdit || (showPinControls && canPin)) && (
                             <div className="pvm-menu-wrap">
                                 <button className="post-action-btn pvm-menu-btn" onClick={e => {
@@ -392,24 +323,26 @@ function PostViewModal({ post, isOpen, onClose, imageUrls, onLike, onEdit, onDel
                                 <div className="pvm-menu-dropdown" onClick={e => e.stopPropagation()}>
                                     {showPinControls && canPin && (
                                         <button className="pvm-menu-item" onClick={() => { onPin(); document.querySelector('.pvm-menu-wrap.open')?.classList.remove('open'); }}>
-                                            {isPinned ? '📌 Открепить' : '📌 Закрепить'}
+                                            {isPinned ? 'Открепить' : 'Закрепить'}
                                         </button>
                                     )}
                                     {canEdit && (
                                         <>
                                             <button className="pvm-menu-item" onClick={() => { onEdit(); document.querySelector('.pvm-menu-wrap.open')?.classList.remove('open'); }}>
-                                                ✏️ Редактировать
+                                                Редактировать
                                             </button>
-                                            <button className="pvm-menu-item danger" onClick={() => { onDelete(); document.querySelector('.pvm-menu-wrap.open')?.classList.remove('open'); }}>
-                                                🗑 Удалить
-                                            </button>
+                                            {!hideDeleteAction && (
+                                                <button className="pvm-menu-item danger" onClick={() => { onDelete(); document.querySelector('.pvm-menu-wrap.open')?.classList.remove('open'); }}>
+                                                    Удалить
+                                                </button>
+                                            )}
                                         </>
                                     )}
                                 </div>
                             </div>
                         )}
 
-                        {/* Дата — прижата к правому краю */}
+                        {/* Р вЂќР В°РЎвЂљР В° РІР‚вЂќ Р С—РЎР‚Р С‘Р В¶Р В°РЎвЂљР В° Р С” Р С—РЎР‚Р В°Р Р†Р С•Р СРЎС“ Р С”РЎР‚Р В°РЎР‹ */}
                         <span className="pvm-date">{formatDate(post.createdAt)}</span>
                     </div>
                 </div>
@@ -418,59 +351,42 @@ function PostViewModal({ post, isOpen, onClose, imageUrls, onLike, onEdit, onDel
     );
 }
 
-// ── Карточка (сетка) ──────────────────────────────────────────────────────────
-export default function Post({ post, onUpdate, onDelete, onLike, showPinControls = false }) {
+// РІвЂќР‚РІвЂќР‚ Р С™Р В°РЎР‚РЎвЂљР С•РЎвЂЎР С”Р В° (РЎРѓР ВµРЎвЂљР С”Р В°) РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+export default function Post({
+    post,
+    onUpdate,
+    onDelete,
+    onLike,
+    showPinControls = false,
+    forceCanEdit = false,
+    forceCanPin = false,
+    hideDeleteAction = false
+}) {
     const [showView, setShowView] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [imageUrls, setImageUrls] = useState({});
-    const [loadingImages, setLoadingImages] = useState({});
-    const fetchedRef    = useRef(new Set());
-    const refreshTimers = useRef({});
 
     const currentUser = getCurrentUser();
+    const { confirm, showError } = useAppModal();
     const isAuthor = currentUser?.id === post.author?.id;
     const isAdmin  = currentUser?.roles?.some(r => r === 'ADMIN' || r === 'ROLE_ADMIN');
-    const canEdit  = isAuthor || isAdmin;
-    const canPin   = isAdmin;
+    const canEdit  = forceCanEdit || isAuthor || isAdmin;
+    const canPin   = forceCanPin || isAdmin;
     const isPinned = !!(post.pinned || post.isPinned);
-
-    const fetchMediaUrl = useCallback(async (fileId, retry = 0) => {
-        if (fetchedRef.current.has(fileId)) return;
-        fetchedRef.current.add(fileId);
-        setLoadingImages(prev => ({ ...prev, [fileId]: true }));
-        try {
-            const res  = await authFetch(`/api/feed/media/${fileId}/url`);
-            if (!res.ok) throw new Error();
-            const data = await res.json();
-            setImageUrls(prev => ({ ...prev, [fileId]: data.url }));
-            refreshTimers.current[fileId] = setTimeout(() => {
-                fetchedRef.current.delete(fileId);
-                setImageUrls(prev => { const n = { ...prev }; delete n[fileId]; return n; });
-                fetchMediaUrl(fileId);
-            }, 210_000);
-        } catch {
-            fetchedRef.current.delete(fileId);
-            if (retry < 3) setTimeout(() => fetchMediaUrl(fileId, retry + 1), 2000 * (retry + 1));
-        } finally {
-            setLoadingImages(prev => ({ ...prev, [fileId]: false }));
-        }
-    }, []);
-
-    useEffect(() => {
-        post.media?.forEach(m => { if (m.fileId && !fetchedRef.current.has(m.fileId)) fetchMediaUrl(m.fileId); });
-        return () => Object.values(refreshTimers.current).forEach(clearTimeout);
-    }, [post.media, fetchMediaUrl]);
+    const {
+        data: imageUrls = {},
+        isLoading: isLoadingMedia,
+    } = usePostMediaUrls(post.media || []);
 
     const firstMedia    = post.media?.[0];
     const isFirstVideo  = firstMedia?.type === 'VIDEO';
     const coverUrl      = firstMedia ? imageUrls[firstMedia.fileId] : null;
-    const isLoadingCover = firstMedia ? !!loadingImages[firstMedia.fileId] : false;
+    const isLoadingCover = Boolean(firstMedia) && isLoadingMedia && !coverUrl;
 
     const formatDate = (d) => {
         const date = new Date(d), now = new Date(), diff = now - date;
-        if (diff < 3600000)  return `${Math.max(1, Math.floor(diff / 60000))} мин`;
-        if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч`;
+        if (diff < 3600000)  return `${Math.max(1, Math.floor(diff / 60000))} РјРёРЅ`;
+        if (diff < 86400000) return `${Math.floor(diff / 3600000)} С‡`;
         return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
     };
 
@@ -481,10 +397,17 @@ export default function Post({ post, onUpdate, onDelete, onLike, showPinControls
     };
 
     const handleDelete = async () => {
-        if (!window.confirm('Удалить пост?')) return;
+        const approved = await confirm({
+            title: 'РЈРґР°Р»РёС‚СЊ РїРѕСЃС‚?',
+            message: 'Р­С‚Рѕ РґРµР№СЃС‚РІРёРµ РЅРµР»СЊР·СЏ РѕС‚РјРµРЅРёС‚СЊ.',
+            confirmLabel: 'РЈРґР°Р»РёС‚СЊ',
+            cancelLabel: 'РћС‚РјРµРЅР°',
+            danger: true,
+        });
+        if (!approved) return;
         setIsDeleting(true); setShowView(false);
         try { await newsAPI.deletePost(post.id); onDelete?.(post.id); }
-        catch { alert('Ошибка при удалении'); }
+        catch { showError('РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ', 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РїРѕСЃС‚'); }
         finally { setIsDeleting(false); }
     };
 
@@ -494,7 +417,12 @@ export default function Post({ post, onUpdate, onDelete, onLike, showPinControls
                 className={`post-card ${isDeleting ? 'deleting' : ''} ${isPinned && showPinControls ? 'pinned' : ''}`}
                 onClick={() => setShowView(true)}
             >
-                {/* ── Обложка ── */}
+                {isPinned && showPinControls && (
+                    <div className="post-card-pin" title="Закрепленный пост">
+                        <img src={pinIcon} alt="" className="post-card-pin-icon" />
+                    </div>
+                )}
+
                 <div className="post-card-cover">
                     {isLoadingCover ? (
                         <div className="post-card-cover-loading"><div className="spinner-small" /></div>
@@ -510,14 +438,18 @@ export default function Post({ post, onUpdate, onDelete, onLike, showPinControls
                             }
                         </div>
                     )}
-                    {isPinned && showPinControls && <div className="post-card-pin">📌</div>}
                 </div>
 
-                {/* ── Overlay при hover ── */}
+                {/* РІвЂќР‚РІвЂќР‚ Overlay Р С—РЎР‚Р С‘ hover РІвЂќР‚РІвЂќР‚ */}
                 <div className="post-card-hover-overlay">
+                    
                     <div className="post-card-hover-top">
                         {post.title && <p className="post-card-hover-title"><AnimatedText text={post.title} size={17} /></p>}
-                        <p className="post-card-hover-desc"><AnimatedText text={post.content} size={13} /></p>
+                        <PostContentRenderer
+                            content={post.content}
+                            contentJson={post.contentJson}
+                            className="post-card-hover-desc post-card-hover-desc-rich"
+                        />
                     </div>
                     <div className="post-card-hover-bottom">
                         <div className="post-card-author">
@@ -530,13 +462,6 @@ export default function Post({ post, onUpdate, onDelete, onLike, showPinControls
                             <span className="post-card-date">{formatDate(post.createdAt)}</span>
                         </div>
                         <div className="post-card-actions">
-                            {showPinControls && canPin && (
-                                <button className={`post-card-action-btn ${isPinned ? 'active' : ''}`} onClick={handlePin} title={isPinned ? 'Открепить' : 'Закрепить'}>
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-                                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                                    </svg>
-                                </button>
-                            )}
                             <AnimatedLikeButton liked={post.userInteraction?.liked} count={post.stats?.likesCount} onClick={() => onLike?.()} />
                         </div>
                     </div>
@@ -551,9 +476,12 @@ export default function Post({ post, onUpdate, onDelete, onLike, showPinControls
                 onDelete={handleDelete}
                 canEdit={canEdit} canPin={canPin} onPin={handlePin}
                 showPinControls={showPinControls}
+                hideDeleteAction={hideDeleteAction}
             />
 
-            <EditPostModal post={post} isOpen={showEdit} onClose={() => setShowEdit(false)} onUpdate={onUpdate} />
+            <EditRichPostModal post={post} isOpen={showEdit} onClose={() => setShowEdit(false)} onUpdate={onUpdate} />
         </>
     );
 }
+
+

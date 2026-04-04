@@ -47,11 +47,9 @@ spring:
     enabled: true
     baseline-on-migrate: true
 
-  servlet:
-    multipart:
-      enabled: true
-      max-file-size: 200MB      # видео до 200 МБ на файл
-      max-request-size: 500MB   # весь запрос (пост + несколько видео)
+internal-auth:
+  secret: ${INTERNAL_AUTH_SECRET:dev-internal-secret}
+
 
 eureka:
   client:

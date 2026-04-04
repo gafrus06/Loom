@@ -3,12 +3,16 @@ package ru.funkids.campservice.security;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ru.funkids.campservice.entity.CampRole;
+import ru.funkids.campservice.entity.*;
 import ru.funkids.campservice.repository.CampMemberRepository;
+import ru.funkids.campservice.repository.CampMemberSessionRepository;
 import ru.funkids.campservice.repository.CounselorAssignmentRepository;
+import ru.funkids.campservice.repository.DetachmentMembershipRepository;
 import ru.funkids.campservice.repository.ParentLinkRepository;
 
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -16,12 +20,11 @@ import java.util.UUID;
 public class CampSecurityService {
 
     private final CampMemberRepository campMemberRepository;
+    private final CampMemberSessionRepository campMemberSessionRepository;
     private final CounselorAssignmentRepository counselorAssignmentRepository;
     private final ParentLinkRepository parentLinkRepository;
+    private final DetachmentMembershipRepository detachmentMembershipRepository;
 
-    /**
-     * Может ли пользователь управлять лагерем (создавать смены, назначать вожатых)
-     */
     public boolean canManageCamp(UUID campId, UUID userId) {
         boolean result = campMemberRepository.existsByCampIdAndUserIdAndRoleAndActiveTrue(
                 campId, userId, CampRole.OWNER
@@ -30,61 +33,74 @@ public class CampSecurityService {
         return result;
     }
 
-    /**
-     * Может ли пользователь создать отряд в смене
-     * ADMIN (OWNER лагеря) или COUNSELOR (прикрепленный к лагерю) могут создавать отряды
-     */
     public boolean canCreateDetachmentInSession(UUID sessionId, UUID userId) {
-        // Проверка 1: OWNER лагеря (ADMIN)
         boolean isOwner = campMemberRepository.existsByCampSessionIdAndUserIdAndRoleAndActiveTrue(
                 sessionId, userId, CampRole.OWNER
         );
-
         if (isOwner) {
-            log.debug("canCreateDetachmentInSession: sessionId={}, userId={}, result=true (OWNER)", sessionId, userId);
             return true;
         }
-
-        // Проверка 2: COUNSELOR прикреплен к ЭТОМУ лагерю
-        boolean isCounselor = campMemberRepository.existsByCampSessionIdAndUserIdAndRoleAndActiveTrue(
-                sessionId, userId, CampRole.COUNSELOR
-        );
-
-        log.debug("canCreateDetachmentInSession: sessionId={}, userId={}, result={} (COUNSELOR)",
-                sessionId, userId, isCounselor);
-        return isCounselor;
+        return campMemberSessionRepository.findByCampMemberUserIdAndAssignmentStatusAndActiveTrue(userId, AssignmentStatus.ACCEPTED)
+                .stream()
+                .anyMatch(a -> a.getSession().getId().equals(sessionId));
     }
 
-    /**
-     * Может ли пользователь работать с отрядом (создавать детей, задавать вопросы AI)
-     */
     public boolean canManageDetachment(UUID detachmentId, UUID userId) {
-        // Проверка 1: ADMIN владелец лагеря
         boolean isOwner = campMemberRepository.existsByCampDetachmentIdAndUserIdAndRoleAndActiveTrue(
                 detachmentId, userId, CampRole.OWNER
         );
-
         if (isOwner) {
-            log.debug("canManageDetachment: detachmentId={}, userId={}, result=true (OWNER)", detachmentId, userId);
             return true;
         }
-
-        // Проверка 2: вожатый назначен на отряд
-        boolean isCounselor = counselorAssignmentRepository.existsByDetachmentIdAndUserIdAndActiveTrue(
-                detachmentId, userId
-        );
-
-        log.debug("canManageDetachment: detachmentId={}, userId={}, result={} (COUNSELOR)",
-                detachmentId, userId, isCounselor);
-        return isCounselor;
+        return counselorAssignmentRepository.existsByDetachmentIdAndUserIdAndActiveTrue(detachmentId, userId);
     }
 
-    /**
-     * Является ли пользователь родителем ребенка
-     */
     public boolean isParentOfChild(UUID childId, UUID userId) {
         boolean result = parentLinkRepository.existsByIdChildIdAndIdParentUserId(childId, userId);
         log.debug("isParentOfChild: childId={}, userId={}, result={}", childId, userId, result);
         return result;
+    }
+
+    public boolean canManageCalendar(UUID sessionId, UUID userId) {
+        boolean admin = campMemberRepository.existsByCampSessionIdAndUserIdAndRoleAndActiveTrue(sessionId, userId, CampRole.OWNER);
+        if (admin) return true;
+        return campMemberSessionRepository.findByCampMemberUserIdAndAssignmentStatusAndActiveTrue(userId, AssignmentStatus.ACCEPTED)
+                .stream()
+                .anyMatch(a -> a.getSession().getId().equals(sessionId) && a.getSubRole() == StaffSubRole.SENIOR_COUNSELOR);
+    }
+
+    public boolean canParentViewSessionCalendar(UUID sessionId, UUID userId) {
+        Set<UUID> childIds = parentLinkRepository.findByParentUserId(userId).stream()
+                .map(link -> link.getId().getChildId())
+                .collect(Collectors.toSet());
+        if (childIds.isEmpty()) return false;
+        return detachmentMembershipRepository.findActiveByChildIds(childIds).stream()
+                .anyMatch(m -> m.getDetachment().getSession().getId().equals(sessionId));
+    }
+
+    public boolean canManageShiftTasks(UUID sessionId, UUID userId) {
+        return canManageCalendar(sessionId, userId);
+    }
+
+    public boolean canViewSessionTasks(UUID sessionId, UUID userId) {
+        boolean admin = campMemberRepository.existsByCampSessionIdAndUserIdAndRoleAndActiveTrue(sessionId, userId, CampRole.OWNER);
+        if (admin) return true;
+        return campMemberSessionRepository.findByCampMemberUserIdAndAssignmentStatusAndActiveTrue(userId, AssignmentStatus.ACCEPTED)
+                .stream()
+                .anyMatch(a -> a.getSession().getId().equals(sessionId));
+    }
+
+    public boolean canCompleteTask(ShiftTask task, UUID userId, UUID detachmentId) {
+        if (!canViewSessionTasks(task.getSession().getId(), userId)) {
+            return false;
+        }
+        if (task.getTaskType() == ShiftTaskType.GENERAL) {
+            return true;
+        }
+        if (detachmentId == null || task.getDetachment() == null) {
+            return false;
+        }
+        return task.getDetachment().getId().equals(detachmentId)
+                && counselorAssignmentRepository.existsByDetachmentIdAndUserIdAndActiveTrue(detachmentId, userId);
     }
 }

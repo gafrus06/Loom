@@ -2,13 +2,16 @@ package ru.funkids.campservice.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.funkids.campservice.client.AuthServiceInternalClient;
-import ru.funkids.campservice.dto.*;
+import ru.funkids.campservice.dto.ChildApplicationCreateDto;
+import ru.funkids.campservice.dto.ChildApplicationResponseDto;
+import ru.funkids.campservice.dto.InviteCodeResponseDto;
 import ru.funkids.campservice.entity.*;
 import ru.funkids.campservice.exception.ResourceNotFoundException;
 import ru.funkids.campservice.repository.*;
+import ru.funkids.campservice.service.CampAuthOutboxService;
 
 import java.util.List;
 import java.util.Map;
@@ -24,19 +27,10 @@ public class ChildApplicationServiceImpl {
     private final CampInviteCodeRepository inviteCodeRepository;
     private final CampParentRepository campParentRepository;
     private final CampRepository campRepository;
-    private final AuthServiceInternalClient authServiceClient;
     private final ChildRepository childRepository;
     private final DetachmentRepository detachmentRepository;
+    private final CampAuthOutboxService campAuthOutboxService;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // КОДЫ ПРИГЛАШЕНИЯ
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Генерирует инвайт-код для конкретной смены.
-     * Код теперь привязан к смене (sessionId) — родитель, использовавший его,
-     * будет привязан к этой смене, а не к лагерю в целом.
-     */
     public InviteCodeResponseDto generateInviteCode(UUID campId, UUID sessionId, UUID adminUserId) {
         campRepository.findById(campId)
                 .orElseThrow(() -> new ResourceNotFoundException("Camp not found: " + campId));
@@ -78,35 +72,32 @@ public class ChildApplicationServiceImpl {
         log.info("Deactivated invite code {}", codeId);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ИСПОЛЬЗОВАНИЕ КОДА РОДИТЕЛЕМ
-    // Возвращает campId (для редиректа на UI)
-    // ─────────────────────────────────────────────────────────────────────────
-
     public UUID useInviteCode(String code, UUID parentUserId) {
         CampInviteCode inviteCode = inviteCodeRepository.findByCodeAndActiveTrue(code)
                 .orElseThrow(() -> new IllegalArgumentException("Неверный или неактивный код приглашения"));
 
-        UUID campId    = inviteCode.getCampId();
+        UUID campId = inviteCode.getCampId();
         UUID sessionId = inviteCode.getSessionId();
 
-        // Idempotent: не создаём дубль если уже привязан к этой смене
         if (!campParentRepository.existsByCampIdAndSessionIdAndParentUserId(campId, sessionId, parentUserId)) {
             CampParent campParent = CampParent.builder()
                     .campId(campId)
                     .sessionId(sessionId)
                     .parentUserId(parentUserId)
                     .build();
-            campParentRepository.save(campParent);
-
-            // Выдаём роль ROLE_PARENT если ещё нет
             try {
-                authServiceClient.assignRole(Map.of("userId", parentUserId.toString(), "role", "ROLE_PARENT"));
-                log.info("Assigned ROLE_PARENT to user {}", parentUserId);
-            } catch (Exception e) {
-                log.error("Failed to assign ROLE_PARENT to user {} — role must be assigned manually. Error: {}",
-                        parentUserId, e.getMessage());
+                campParentRepository.save(campParent);
+            } catch (DataIntegrityViolationException ex) {
+                if (!campParentRepository.existsByCampIdAndSessionIdAndParentUserId(campId, sessionId, parentUserId)) {
+                    throw ex;
+                }
+                log.info("Invite code {} was consumed concurrently by parent {} for session {}",
+                        code, parentUserId, sessionId);
+                return campId;
             }
+
+            campAuthOutboxService.enqueueAssignRole(parentUserId, "ROLE_PARENT");
+            log.info("Enqueued ROLE_PARENT assignment for user {}", parentUserId);
             log.info("Parent {} joined camp {} session {} via invite code", parentUserId, campId, sessionId);
         } else {
             log.info("Parent {} already linked to camp {} session {}", parentUserId, campId, sessionId);
@@ -115,14 +106,7 @@ public class ChildApplicationServiceImpl {
         return campId;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ЗАЯВКИ РОДИТЕЛЯ
-    // ─────────────────────────────────────────────────────────────────────────
-
-    public ChildApplicationResponseDto createApplication(
-            UUID campId, UUID parentUserId, ChildApplicationCreateDto dto) {
-
-        // Достаточно проверить привязку к лагерю — по любой смене
+    public ChildApplicationResponseDto createApplication(UUID campId, UUID parentUserId, ChildApplicationCreateDto dto) {
         if (!campParentRepository.existsByCampIdAndParentUserId(campId, parentUserId)) {
             throw new IllegalStateException("Родитель не привязан к этому лагерю");
         }
@@ -155,10 +139,6 @@ public class ChildApplicationServiceImpl {
                 .stream().map(this::toResponseDto).toList();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // СПИСОК ЗАЯВОК ДЛЯ ВОЖАТОГО
-    // ─────────────────────────────────────────────────────────────────────────
-
     @Transactional(readOnly = true)
     public List<ChildApplicationResponseDto> getPendingApplications(UUID campId, String search) {
         List<ChildApplication> list = applicationRepository
@@ -175,14 +155,8 @@ public class ChildApplicationServiceImpl {
         return list.stream().map(this::toResponseDto).toList();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ПОДТВЕРЖДЕНИЕ ВОЖАТЫМ
-    // ─────────────────────────────────────────────────────────────────────────
-
-    public ChildApplicationResponseDto confirmApplication(
-            UUID applicationId, UUID detachmentId, UUID counselorUserId) {
-
-        ChildApplication app = applicationRepository.findById(applicationId)
+    public ChildApplicationResponseDto confirmApplication(UUID applicationId, UUID detachmentId, UUID counselorUserId) {
+        ChildApplication app = applicationRepository.findWithLockById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found: " + applicationId));
 
         if (app.getStatus() != ApplicationStatus.PENDING) {
@@ -192,7 +166,6 @@ public class ChildApplicationServiceImpl {
         Detachment detachment = detachmentRepository.findById(detachmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Detachment not found: " + detachmentId));
 
-        // 1. Создаём ребёнка из данных заявки
         Child child = Child.builder()
                 .firstName(app.getFirstName())
                 .lastName(app.getLastName())
@@ -207,14 +180,12 @@ public class ChildApplicationServiceImpl {
                 .parentVerified(true)
                 .build();
 
-        // 2. Добавляем в отряд
         DetachmentMembership membership = DetachmentMembership.builder()
                 .detachment(detachment)
                 .child(child)
                 .build();
         child.getMemberships().add(membership);
 
-        // 3. Привязываем родителя через ParentLink
         ParentLinkId linkId = new ParentLinkId();
         linkId.setParentUserId(app.getParentUserId());
         ParentLink parentLink = new ParentLink();
@@ -226,32 +197,20 @@ public class ChildApplicationServiceImpl {
         Child saved = childRepository.save(child);
         linkId.setChildId(saved.getId());
 
-        // 4. Обновляем статус заявки
         app.setStatus(ApplicationStatus.CONFIRMED);
         app.setChildId(saved.getId());
         app.setConfirmedBy(counselorUserId);
 
-        // 5. Убеждаемся, что у родителя есть роль PARENT
-        // try-catch чтобы ошибка выдачи роли не откатывала транзакцию подтверждения заявки
-        try {
-            authServiceClient.assignRole(Map.of("userId", app.getParentUserId().toString(), "role", "ROLE_PARENT"));
-            log.info("Assigned ROLE_PARENT to user {}", app.getParentUserId());
-        } catch (Exception e) {
-            log.error("Failed to assign ROLE_PARENT to user {} — role must be assigned manually. Error: {}",
-                    app.getParentUserId(), e.getMessage());
-        }
+        campAuthOutboxService.enqueueAssignRole(app.getParentUserId(), "ROLE_PARENT");
+        log.info("Enqueued ROLE_PARENT assignment for user {}", app.getParentUserId());
 
         log.info("Application {} confirmed, child {} created in detachment {}",
                 applicationId, saved.getId(), detachmentId);
         return toResponseDto(app);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // ОТКЛОНЕНИЕ
-    // ─────────────────────────────────────────────────────────────────────────
-
     public ChildApplicationResponseDto rejectApplication(UUID applicationId, UUID counselorUserId) {
-        ChildApplication app = applicationRepository.findById(applicationId)
+        ChildApplication app = applicationRepository.findWithLockById(applicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Application not found: " + applicationId));
 
         if (app.getStatus() != ApplicationStatus.PENDING) {
@@ -264,10 +223,6 @@ public class ChildApplicationServiceImpl {
         log.info("Application {} rejected by {}", applicationId, counselorUserId);
         return toResponseDto(app);
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // ВСПОМОГАТЕЛЬНЫЕ
-    // ─────────────────────────────────────────────────────────────────────────
 
     private String randomCode() {
         return UUID.randomUUID().toString()

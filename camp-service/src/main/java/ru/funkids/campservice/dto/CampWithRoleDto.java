@@ -19,6 +19,7 @@ public class CampWithRoleDto {
     private String name;
     private String location;
     private String description;
+    private UUID photoFileId;
     private UUID ownerId;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
