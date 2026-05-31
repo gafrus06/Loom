@@ -1,0 +1,35 @@
+.consent-checkbox {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    color: var(--muted, #A9B3C7);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.consent-checkbox input {
+    width: 18px;
+    height: 18px;
+    margin: 2px 0 0;
+    accent-color: var(--btn-grad-end, #3C8DFF);
+    cursor: pointer;
+}
+
+.consent-checkbox__content {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.consent-checkbox a {
+    color: var(--text, #EAEFF7);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.consent-checkbox__error {
+    color: var(--error, #ff6b6b);
+    font-size: 12px;
+    line-height: 1.4;
+}

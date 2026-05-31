@@ -66,6 +66,9 @@ public class CampNotificationOutboxPublisher {
                 log.error("Failed to publish camp notification outbox event {}", event.getId(), ex);
             }
         }
+        if (!batch.isEmpty()) {
+            repository.saveAll(batch);
+        }
     }
 
     private Map<String, String> readMetadata(String metadataJson) throws Exception {

@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -61,5 +62,31 @@ class FileStorageAclTest {
         ))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("403 FORBIDDEN");
+    }
+
+    @Test
+    void allowsGatewayUploadAndReadForCampPhotosOfAuthenticatedUser() {
+        FileMetadataRepository repository = mock(FileMetadataRepository.class);
+        S3Service s3Service = mock(S3Service.class);
+        FileStorageService service = new FileStorageService(s3Service, repository);
+
+        UUID fileId = UUID.randomUUID();
+        FileMetadata metadata = new FileMetadata();
+        metadata.setId(fileId);
+        metadata.setOwnerService("camp-service");
+        metadata.setOwnerEntityId("camp-1");
+        metadata.setObjectKey("camp-service/camp-photo/" + fileId);
+        metadata.setUploadedAt(LocalDateTime.now());
+
+        GatewayUserPrincipal user = new GatewayUserPrincipal(
+                "00000000-0000-0000-0000-000000000001", "user", Set.of("ROLE_USER"));
+
+        when(repository.findById(fileId)).thenReturn(Optional.of(metadata));
+        when(s3Service.objectExists(metadata.getObjectKey())).thenReturn(true);
+
+        assertThatCode(() -> service.generateDownloadUrl(fileId, "api-gateway", user))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> service.confirmUpload(fileId, "camp-1", "api-gateway", user))
+                .doesNotThrowAnyException();
     }
 }

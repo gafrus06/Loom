@@ -3,6 +3,8 @@ package ru.fun.userservice.config;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -15,10 +17,14 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
+@Configuration
 public class AppConfig implements RequestInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(AppConfig.class);
     private static final String CALLER_SERVICE = "user-service";
+
+    @Value("${internal-auth.secret:${INTERNAL_AUTH_SECRET:}}")
+    private String internalAuthSecret;
 
     @Override
     public void apply(RequestTemplate template) {
@@ -90,11 +96,10 @@ public class AppConfig implements RequestInterceptor {
     }
 
     private String resolveInternalSecret() {
-        String fromEnv = System.getenv("INTERNAL_AUTH_SECRET");
-        if (fromEnv != null && !fromEnv.isBlank()) {
-            return fromEnv;
+        if (internalAuthSecret == null || internalAuthSecret.isBlank()) {
+            throw new IllegalStateException("internal-auth.secret must be configured");
         }
-        return "dev-internal-secret";
+        return internalAuthSecret;
     }
 
     private String safe(String value) {

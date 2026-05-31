@@ -40,14 +40,25 @@ public class UserEventListener {
     )
     @Transactional
     public void handleUserRegistered(UserRegisteredEvent event) {
-        if (isDuplicate(event.getEventId())) {
+        if (event == null || event.getUserId() == null) {
+            log.warn("Ignoring malformed UserRegisteredEvent: {}", event);
             return;
         }
+
         UUID userId = UUID.fromString(event.getUserId());
 
         if (userProfileRepository.existsById(userId)) {
-            log.info("UserProfile already exists for userId={}, skipping", userId);
+            markProcessed(event.getEventId());
+            log.debug("UserProfile already exists for userId={}, skipping", userId);
             return;
+        }
+
+        if (isDuplicate(event.getEventId())) {
+            log.warn(
+                    "Processed UserRegisteredEvent {} has no UserProfile for userId={}; recreating profile",
+                    event.getEventId(),
+                    userId
+            );
         }
 
         UserProfile profile = UserProfile.builder()
@@ -67,6 +78,10 @@ public class UserEventListener {
     )
     @Transactional
     public void handleUserRoleChanged(UserRoleChangedEvent event) {
+        if (event == null || event.getUserId() == null) {
+            log.warn("Ignoring malformed UserRoleChangedEvent: {}", event);
+            return;
+        }
         if (isDuplicate(event.getEventId())) {
             return;
         }
@@ -157,7 +172,7 @@ public class UserEventListener {
             return false;
         }
         if (processedAuthEventRepository.existsById(eventId)) {
-            log.info("Auth event {} already processed, skipping duplicate delivery", eventId);
+            log.debug("Auth event {} already processed, skipping duplicate delivery", eventId);
             return true;
         }
         return false;

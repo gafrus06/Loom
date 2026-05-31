@@ -143,6 +143,9 @@ public class FileStorageService {
             }
             return;
         }
+        if ("camp-service".equals(ownerService) && isGatewayUserRequest(callerService, currentUser)) {
+            return;
+        }
         if (!ownerService.equals(callerService)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Caller service mismatch");
         }
@@ -156,6 +159,9 @@ public class FileStorageService {
             if (currentUser == null || !currentUser.getUserId().toString().equals(ownerEntityId)) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only bind files to yourself");
             }
+            return;
+        }
+        if ("camp-service".equals(metadata.getOwnerService()) && isGatewayUserRequest(callerService, currentUser)) {
             return;
         }
         if (!metadata.getOwnerService().equals(callerService)) {
@@ -174,10 +180,17 @@ public class FileStorageService {
             }
             return;
         }
+        if ("camp-service".equals(metadata.getOwnerService()) && isGatewayUserRequest(callerService, currentUser)) {
+            return;
+        }
         if (metadata.getOwnerService().equals(callerService)) {
             return;
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
+    }
+
+    private boolean isGatewayUserRequest(String callerService, GatewayUserPrincipal currentUser) {
+        return "api-gateway".equals(callerService) && currentUser != null;
     }
 
     private String normalizeService(String service) {

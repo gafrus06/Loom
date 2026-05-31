@@ -376,7 +376,7 @@ rate-limit:
   burst-capacity: 300
 
 internal-auth:
-  secret: ${INTERNAL_AUTH_SECRET:dev-internal-secret}
+  secret: c2VjcmV0Y2hhbmdlLW1lLWRldi1zZWNyZXQtZm9yLWxvY2FsLTAxMjM0NTY3ODka
   token-version-cache:
     ttl-seconds: 5
     max-size: 10000

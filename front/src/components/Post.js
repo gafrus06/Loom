@@ -10,132 +10,192 @@ import { usePostMediaUrls } from '../hooks/usePostMediaUrls';
 import pinIcon from '../assets/news/zak.png';
 import './Post.css';
 
-
 function CustomVideoPlayer({ src }) {
-    const videoRef    = useRef(null);
+    const videoRef = useRef(null);
     const progressRef = useRef(null);
-    const [playing,  setPlaying]  = useState(false);
-    const [muted,    setMuted]    = useState(false);
+    const [playing, setPlaying] = useState(false);
+    const [muted, setMuted] = useState(false);
     const [progress, setProgress] = useState(0);
     const [duration, setDuration] = useState(0);
-    const [current,  setCurrent]  = useState(0);
-    const [showVol,  setShowVol]  = useState(false);
-    const [volume,   setVolume]   = useState(1);
-    const [fullscr,  setFullscr]  = useState(false);
+    const [current, setCurrent] = useState(0);
+    const [showVol, setShowVol] = useState(false);
+    const [volume, setVolume] = useState(1);
+    const [fullscr, setFullscr] = useState(false);
 
     const fmt = (s) => {
         if (!s || isNaN(s)) return '0:00';
-        const m = Math.floor(s / 60), sec = Math.floor(s % 60);
-        return m + ':' + sec.toString().padStart(2, '0');
+        const m = Math.floor(s / 60);
+        const sec = Math.floor(s % 60);
+        return `${m}:${sec.toString().padStart(2, '0')}`;
     };
 
     const togglePlay = () => {
-        const v = videoRef.current; if (!v) return;
-        if (v.paused) { v.play(); setPlaying(true); }
-        else          { v.pause(); setPlaying(false); }
+        const video = videoRef.current;
+        if (!video) return;
+        if (video.paused) {
+            video.play();
+            setPlaying(true);
+        } else {
+            video.pause();
+            setPlaying(false);
+        }
     };
 
     const onTimeUpdate = () => {
-        const v = videoRef.current; if (!v) return;
-        setCurrent(v.currentTime);
-        setProgress(v.duration ? (v.currentTime / v.duration) * 100 : 0);
+        const video = videoRef.current;
+        if (!video) return;
+        setCurrent(video.currentTime);
+        setProgress(video.duration ? (video.currentTime / video.duration) * 100 : 0);
     };
 
     const onEnded = () => setPlaying(false);
 
-    // Р Р€Р В±Р С‘РЎР‚Р В°Р ВµР С Р Р…Р В°РЎвЂљР С‘Р Р†Р Р…РЎвЂ№Р Вµ Р С”Р С•Р Р…РЎвЂљРЎР‚Р С•Р В»РЎвЂ№ Р В±РЎР‚Р В°РЎС“Р В·Р ВµРЎР‚Р В° Р С—РЎР‚Р С•Р С–РЎР‚Р В°Р СР СР Р…Р С•
     useEffect(() => {
-        const v = videoRef.current;
-        if (!v) return;
-        v.removeAttribute('controls');
-        // Р С›РЎвЂљР С”Р В»РЎР‹РЎвЂЎР В°Р ВµР С Picture-in-Picture РЎвЂЎР ВµРЎР‚Р ВµР В· API Р ВµРЎРѓР В»Р С‘ Р Т‘Р С•РЎРѓРЎвЂљРЎС“Р С—Р ВµР Р…
-        if ('disablePictureInPicture' in v) v.disablePictureInPicture = true;
+        const video = videoRef.current;
+        if (!video) return;
+        video.removeAttribute('controls');
+        if ('disablePictureInPicture' in video) {
+            video.disablePictureInPicture = true;
+        }
     }, []);
 
     const seek = (e) => {
-        const v = videoRef.current, bar = progressRef.current;
-        if (!v || !bar || !v.duration) return;
+        const video = videoRef.current;
+        const bar = progressRef.current;
+        if (!video || !bar || !video.duration) return;
         const rect = bar.getBoundingClientRect();
-        v.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * v.duration;
+        video.currentTime = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * video.duration;
     };
 
     const toggleMute = () => {
-        const v = videoRef.current; if (!v) return;
-        v.muted = !v.muted; setMuted(v.muted);
+        const video = videoRef.current;
+        if (!video) return;
+        video.muted = !video.muted;
+        setMuted(video.muted);
     };
 
     const changeVolume = (e) => {
-        const v = videoRef.current; if (!v) return;
+        const video = videoRef.current;
+        if (!video) return;
         const val = parseFloat(e.target.value);
-        v.volume = val; setVolume(val);
-        v.muted = val === 0; setMuted(val === 0);
+        video.volume = val;
+        setVolume(val);
+        video.muted = val === 0;
+        setMuted(val === 0);
     };
 
     const toggleFullscreen = () => {
         const wrap = videoRef.current?.closest('.cvp-wrap');
         if (!wrap) return;
-        if (!document.fullscreenElement) { wrap.requestFullscreen?.(); setFullscr(true); }
-        else { document.exitFullscreen?.(); setFullscr(false); }
+        if (!document.fullscreenElement) {
+            wrap.requestFullscreen?.();
+            setFullscr(true);
+        } else {
+            document.exitFullscreen?.();
+            setFullscr(false);
+        }
     };
 
     const volVal = muted ? 0 : volume;
 
     return (
         <div className="cvp-wrap">
-            <video ref={videoRef} src={src} className="cvp-video"
-                   onTimeUpdate={onTimeUpdate}
-                   onLoadedMetadata={() => { const v = videoRef.current; if (v) setDuration(v.duration); }}
-                   onEnded={onEnded}
-                   onContextMenu={e => e.preventDefault()}
-                   playsInline
-                   preload="auto"
-                   disablePictureInPicture
-                   controlsList="nodownload nofullscreen noremoteplayback"
+            <video
+                ref={videoRef}
+                src={src}
+                className="cvp-video"
+                onTimeUpdate={onTimeUpdate}
+                onLoadedMetadata={() => {
+                    const video = videoRef.current;
+                    if (video) setDuration(video.duration);
+                }}
+                onEnded={onEnded}
+                onContextMenu={(e) => e.preventDefault()}
+                playsInline
+                preload="auto"
+                disablePictureInPicture
+                controlsList="nodownload nofullscreen noremoteplayback"
             />
-            {/* Р СџРЎР‚Р С•Р В·РЎР‚Р В°РЎвЂЎР Р…РЎвЂ№Р в„– Р С—Р ВµРЎР‚Р ВµРЎвЂ¦Р Р†Р В°РЎвЂљРЎвЂЎР С‘Р С” РІР‚вЂќ Р В±Р В»Р С•Р С”Р С‘РЎР‚РЎС“Р ВµРЎвЂљ Р Р…Р В°РЎвЂљР С‘Р Р†Р Р…РЎвЂ№Р Вµ Р С”Р С•Р Р…РЎвЂљРЎР‚Р С•Р В»РЎвЂ№ Р Р‡Р Р…Р Т‘Р ВµР С”РЎРѓ/Chrome */}
-            <div className="cvp-blocker" onClick={togglePlay} onContextMenu={e => e.preventDefault()} />
+
+            <div className="cvp-blocker" onClick={togglePlay} onContextMenu={(e) => e.preventDefault()} />
 
             {!playing && (
                 <div className="cvp-center-play" onClick={togglePlay}>
-                    <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
+                        <polygon points="6 3 20 12 6 21 6 3" />
+                    </svg>
                 </div>
             )}
 
-            <div className="cvp-controls" onClick={e => e.stopPropagation()}>
+            <div className="cvp-controls" onClick={(e) => e.stopPropagation()}>
                 <div className="cvp-progress" ref={progressRef} onClick={seek}>
                     <div className="cvp-progress-track" />
-                    <div className="cvp-progress-fill" style={{ width: progress + '%' }} />
-                    <div className="cvp-progress-thumb" style={{ left: progress + '%' }} />
+                    <div className="cvp-progress-fill" style={{ width: `${progress}%` }} />
+                    <div className="cvp-progress-thumb" style={{ left: `${progress}%` }} />
                 </div>
                 <div className="cvp-bottom">
                     <button className="cvp-btn" onClick={togglePlay}>
-                        {playing
-                            ? <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                            : <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>}
+                        {playing ? (
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="6" y="4" width="4" height="16" />
+                                <rect x="14" y="4" width="4" height="16" />
+                            </svg>
+                        ) : (
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="6 3 20 12 6 21 6 3" />
+                            </svg>
+                        )}
                     </button>
                     <span className="cvp-time">{fmt(current)} / {fmt(duration)}</span>
                     <div className="cvp-right">
-                        <div className="cvp-vol-wrap"
-                             onMouseEnter={() => setShowVol(true)}
-                             onMouseLeave={() => setShowVol(false)}>
+                        <div
+                            className="cvp-vol-wrap"
+                            onMouseEnter={() => setShowVol(true)}
+                            onMouseLeave={() => setShowVol(false)}
+                        >
                             {showVol && (
                                 <div className="cvp-vol-popup">
-                                    <input type="range" min="0" max="1" step="0.02"
-                                           value={volVal} onChange={changeVolume} className="cvp-vol-range" />
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="1"
+                                        step="0.02"
+                                        value={volVal}
+                                        onChange={changeVolume}
+                                        className="cvp-vol-range"
+                                    />
                                 </div>
                             )}
                             <button className="cvp-btn" onClick={toggleMute}>
-                                {volVal === 0
-                                    ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-                                    : volVal < 0.5
-                                        ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-                                        : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>}
+                                {volVal === 0 ? (
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                        <line x1="23" y1="9" x2="17" y2="15" />
+                                        <line x1="17" y1="9" x2="23" y2="15" />
+                                    </svg>
+                                ) : volVal < 0.5 ? (
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                                    </svg>
+                                ) : (
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+                                    </svg>
+                                )}
                             </button>
                         </div>
                         <button className="cvp-btn" onClick={toggleFullscreen}>
-                            {fullscr
-                                ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
-                                : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>}
+                            {fullscr ? (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+                                </svg>
+                            ) : (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                                </svg>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -143,8 +203,6 @@ function CustomVideoPlayer({ src }) {
         </div>
     );
 }
-
-// РІвЂќР‚РІвЂќР‚ Р СљР С•Р Т‘Р В°Р В»Р С”Р В° РЎР‚Р ВµР Т‘Р В°Р С”РЎвЂљР С‘РЎР‚Р С•Р Р†Р В°Р Р…Р С‘РЎРЏ РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 
 function AnimatedLikeButton({ liked, count, onClick }) {
     const [burst, setBurst] = useState(false);
@@ -162,14 +220,23 @@ function AnimatedLikeButton({ liked, count, onClick }) {
                 distance: 28 + Math.random() * 18,
             })));
             setBurst(true);
-            setTimeout(() => { setBurst(false); setParticles([]); }, 700);
+            setTimeout(() => {
+                setBurst(false);
+                setParticles([]);
+            }, 700);
         }
     };
 
     return (
         <div className="animated-like-wrap">
-            {particles.map(p => (
-                <span key={p.id} className="like-particle" style={{ '--angle': `${p.angle}deg`, '--dist': `${p.distance}px` }}>{p.emoji}</span>
+            {particles.map((p) => (
+                <span
+                    key={p.id}
+                    className="like-particle"
+                    style={{ '--angle': `${p.angle}deg`, '--dist': `${p.distance}px` }}
+                >
+                    {p.emoji}
+                </span>
             ))}
             <button className={`post-card-like ${liked ? 'active' : ''} ${burst ? 'burst' : ''}`} onClick={handleClick}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
@@ -181,7 +248,6 @@ function AnimatedLikeButton({ liked, count, onClick }) {
     );
 }
 
-// РІвЂќР‚РІвЂќР‚ Р СљР С•Р Т‘Р В°Р В»Р С”Р В° Р С—РЎР‚Р С•РЎРѓР СР С•РЎвЂљРЎР‚Р В° РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 function PostViewModal({
     post,
     isOpen,
@@ -199,45 +265,67 @@ function PostViewModal({
     const navigate = useNavigate();
     const [activeIdx, setActiveIdx] = useState(0);
 
-    useEffect(() => { if (isOpen) setActiveIdx(0); }, [isOpen]);
+    useEffect(() => {
+        if (isOpen) setActiveIdx(0);
+    }, [isOpen]);
 
     useEffect(() => {
-        const h = (e) => { if (e.key === 'Escape') onClose(); };
-        if (isOpen) document.addEventListener('keydown', h);
-        return () => document.removeEventListener('keydown', h);
+        const handler = (e) => {
+            if (e.key === 'Escape') onClose();
+        };
+        if (isOpen) document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
     }, [isOpen, onClose]);
 
     useEffect(() => {
         if (!isOpen) return;
-        const html = document.documentElement, body = document.body;
+        const html = document.documentElement;
+        const body = document.body;
         const scrollY = window.scrollY;
-        const prevBO = body.style.overflow, prevHO = html.style.overflow;
-        body.style.overflow = 'hidden'; html.style.overflow = 'hidden';
-        body.style.position = 'fixed'; body.style.top = `-${scrollY}px`; body.style.width = '100%';
-        const pt = (e) => e.preventDefault();
-        document.addEventListener('touchmove', pt, { passive: false });
+        const prevBodyOverflow = body.style.overflow;
+        const prevHtmlOverflow = html.style.overflow;
+        body.style.overflow = 'hidden';
+        html.style.overflow = 'hidden';
+        body.style.position = 'fixed';
+        body.style.top = `-${scrollY}px`;
+        body.style.width = '100%';
+
+        const preventTouchMove = (e) => e.preventDefault();
+        document.addEventListener('touchmove', preventTouchMove, { passive: false });
+
         return () => {
-            body.style.overflow = prevBO; html.style.overflow = prevHO;
-            body.style.position = ''; body.style.top = ''; body.style.width = '';
+            body.style.overflow = prevBodyOverflow;
+            html.style.overflow = prevHtmlOverflow;
+            body.style.position = '';
+            body.style.top = '';
+            body.style.width = '';
             window.scrollTo(0, scrollY);
-            document.removeEventListener('touchmove', pt);
+            document.removeEventListener('touchmove', preventTouchMove);
         };
     }, [isOpen]);
 
     if (!isOpen) return null;
 
     const allMedia = post.media || [];
-    const current  = allMedia[activeIdx];
-    const isVideo  = current?.type === 'VIDEO';
+    const current = allMedia[activeIdx];
+    const isVideo = current?.type === 'VIDEO';
     const mediaUrl = current ? imageUrls[current.fileId] : null;
     const isPinned = !!(post.pinned || post.isPinned);
 
     const formatDate = (d) => {
-        const date = new Date(d), now = new Date(), diff = now - date;
-        if (diff < 60000) return 'только что';
-        if (diff < 3600000) { const m = Math.floor(diff / 60000); return `${m} ${m === 1 ? 'минуту' : m < 5 ? 'минуты' : 'минут'} назад`; }
-        if (diff < 86400000) { const h = Math.floor(diff / 3600000); return `${h} ${h === 1 ? 'час' : h < 5 ? 'часа' : 'часов'} назад`; }
-        return date.toLocaleDateString('ru-RU', { day:'numeric', month:'long', year:'numeric' });
+        const date = new Date(d);
+        const now = new Date();
+        const diff = now - date;
+        if (diff < 60_000) return 'только что';
+        if (diff < 3_600_000) {
+            const m = Math.floor(diff / 60_000);
+            return `${m} ${m === 1 ? 'минуту' : m < 5 ? 'минуты' : 'минут'} назад`;
+        }
+        if (diff < 86_400_000) {
+            const h = Math.floor(diff / 3_600_000);
+            return `${h} ${h === 1 ? 'час' : h < 5 ? 'часа' : 'часов'} назад`;
+        }
+        return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
     };
 
     return (
@@ -250,7 +338,6 @@ function PostViewModal({
                 )}
                 <button className="post-view-close" onClick={onClose}>×</button>
 
-                {/* Р вЂєР ВµР Р†Р В°РЎРЏ РЎвЂЎР В°РЎРѓРЎвЂљРЎРЉ РІР‚вЂќ Р СР ВµР Т‘Р С‘Р В° */}
                 {allMedia.length > 0 && (
                     <div className="pvm-media">
                         <div className="pvm-media-main">
@@ -281,7 +368,6 @@ function PostViewModal({
                     </div>
                 )}
 
-                {/* Р СџРЎР‚Р В°Р Р†Р В°РЎРЏ РЎвЂЎР В°РЎРѓРЎвЂљРЎРЉ РІР‚вЂќ Р С”Р С•Р Р…РЎвЂљР ВµР Р…РЎвЂљ */}
                 <div className={`pvm-content ${allMedia.length === 0 ? 'no-media' : ''}`}>
                     <div className="pvm-author" onClick={() => { navigate(`/users/${post.author?.id}`); onClose(); }}>
                         <div className="post-author-avatar">
@@ -301,7 +387,6 @@ function PostViewModal({
                     </div>
 
                     <div className="pvm-actions">
-                        {/* Р вЂєР В°Р в„–Р С” РЎРѓР В»Р ВµР Р†Р В° */}
                         <button className={`post-action-btn like-btn ${post.userInteraction?.liked ? 'active' : ''}`} onClick={onLike}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill={post.userInteraction?.liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
                                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -309,30 +394,40 @@ function PostViewModal({
                             {post.stats?.likesCount > 0 && <span>{post.stats.likesCount}</span>}
                         </button>
 
-                        {/* Р СћРЎР‚Р С‘ РЎвЂљР С•РЎвЂЎР С”Р С‘ РІР‚вЂќ Р СР ВµР Р…РЎР‹ Р Т‘Р ВµР в„–РЎРѓРЎвЂљР Р†Р С‘Р в„– */}
                         {(canEdit || (showPinControls && canPin)) && (
                             <div className="pvm-menu-wrap">
-                                <button className="post-action-btn pvm-menu-btn" onClick={e => {
+                                <button className="post-action-btn pvm-menu-btn" onClick={(e) => {
                                     e.stopPropagation();
                                     e.currentTarget.closest('.pvm-menu-wrap').classList.toggle('open');
                                 }}>
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                        <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+                                        <circle cx="5" cy="12" r="2" />
+                                        <circle cx="12" cy="12" r="2" />
+                                        <circle cx="19" cy="12" r="2" />
                                     </svg>
                                 </button>
-                                <div className="pvm-menu-dropdown" onClick={e => e.stopPropagation()}>
+                                <div className="pvm-menu-dropdown" onClick={(e) => e.stopPropagation()}>
                                     {showPinControls && canPin && (
-                                        <button className="pvm-menu-item" onClick={() => { onPin(); document.querySelector('.pvm-menu-wrap.open')?.classList.remove('open'); }}>
+                                        <button className="pvm-menu-item" onClick={() => {
+                                            onPin();
+                                            document.querySelector('.pvm-menu-wrap.open')?.classList.remove('open');
+                                        }}>
                                             {isPinned ? 'Открепить' : 'Закрепить'}
                                         </button>
                                     )}
                                     {canEdit && (
                                         <>
-                                            <button className="pvm-menu-item" onClick={() => { onEdit(); document.querySelector('.pvm-menu-wrap.open')?.classList.remove('open'); }}>
+                                            <button className="pvm-menu-item" onClick={() => {
+                                                onEdit();
+                                                document.querySelector('.pvm-menu-wrap.open')?.classList.remove('open');
+                                            }}>
                                                 Редактировать
                                             </button>
                                             {!hideDeleteAction && (
-                                                <button className="pvm-menu-item danger" onClick={() => { onDelete(); document.querySelector('.pvm-menu-wrap.open')?.classList.remove('open'); }}>
+                                                <button className="pvm-menu-item danger" onClick={() => {
+                                                    onDelete();
+                                                    document.querySelector('.pvm-menu-wrap.open')?.classList.remove('open');
+                                                }}>
                                                     Удалить
                                                 </button>
                                             )}
@@ -342,7 +437,6 @@ function PostViewModal({
                             </div>
                         )}
 
-                        {/* Р вЂќР В°РЎвЂљР В° РІР‚вЂќ Р С—РЎР‚Р С‘Р В¶Р В°РЎвЂљР В° Р С” Р С—РЎР‚Р В°Р Р†Р С•Р СРЎС“ Р С”РЎР‚Р В°РЎР‹ */}
                         <span className="pvm-date">{formatDate(post.createdAt)}</span>
                     </div>
                 </div>
@@ -351,7 +445,6 @@ function PostViewModal({
     );
 }
 
-// РІвЂќР‚РІвЂќР‚ Р С™Р В°РЎР‚РЎвЂљР С•РЎвЂЎР С”Р В° (РЎРѓР ВµРЎвЂљР С”Р В°) РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 export default function Post({
     post,
     onUpdate,
@@ -369,46 +462,59 @@ export default function Post({
     const currentUser = getCurrentUser();
     const { confirm, showError } = useAppModal();
     const isAuthor = currentUser?.id === post.author?.id;
-    const isAdmin  = currentUser?.roles?.some(r => r === 'ADMIN' || r === 'ROLE_ADMIN');
-    const canEdit  = forceCanEdit || isAuthor || isAdmin;
-    const canPin   = forceCanPin || isAdmin;
+    const isAdmin = currentUser?.roles?.some((r) => r === 'ADMIN' || r === 'ROLE_ADMIN');
+    const canEdit = forceCanEdit || isAuthor || isAdmin;
+    const canPin = forceCanPin || isAdmin;
     const isPinned = !!(post.pinned || post.isPinned);
     const {
         data: imageUrls = {},
         isLoading: isLoadingMedia,
     } = usePostMediaUrls(post.media || []);
 
-    const firstMedia    = post.media?.[0];
-    const isFirstVideo  = firstMedia?.type === 'VIDEO';
-    const coverUrl      = firstMedia ? imageUrls[firstMedia.fileId] : null;
+    const firstMedia = post.media?.[0];
+    const isFirstVideo = firstMedia?.type === 'VIDEO';
+    const coverUrl = firstMedia ? imageUrls[firstMedia.fileId] : null;
     const isLoadingCover = Boolean(firstMedia) && isLoadingMedia && !coverUrl;
 
     const formatDate = (d) => {
-        const date = new Date(d), now = new Date(), diff = now - date;
-        if (diff < 3600000)  return `${Math.max(1, Math.floor(diff / 60000))} РјРёРЅ`;
-        if (diff < 86400000) return `${Math.floor(diff / 3600000)} С‡`;
+        const date = new Date(d);
+        const now = new Date();
+        const diff = now - date;
+        if (diff < 3_600_000) return `${Math.max(1, Math.floor(diff / 60_000))} мин`;
+        if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} ч`;
         return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
     };
 
     const handlePin = async (e) => {
-        e?.preventDefault(); e?.stopPropagation();
-        try { const u = await newsAPI.togglePin(post.id, !isPinned); onUpdate?.(u); }
-        catch (err) { console.error('Pin error:', err); }
+        e?.preventDefault();
+        e?.stopPropagation();
+        try {
+            const updated = await newsAPI.togglePin(post.id, !isPinned);
+            onUpdate?.(updated);
+        } catch (err) {
+            console.error('Pin error:', err);
+        }
     };
 
     const handleDelete = async () => {
         const approved = await confirm({
-            title: 'РЈРґР°Р»РёС‚СЊ РїРѕСЃС‚?',
-            message: 'Р­С‚Рѕ РґРµР№СЃС‚РІРёРµ РЅРµР»СЊР·СЏ РѕС‚РјРµРЅРёС‚СЊ.',
-            confirmLabel: 'РЈРґР°Р»РёС‚СЊ',
-            cancelLabel: 'РћС‚РјРµРЅР°',
+            title: 'Удалить пост?',
+            message: 'Это действие нельзя отменить.',
+            confirmLabel: 'Удалить',
+            cancelLabel: 'Отмена',
             danger: true,
         });
         if (!approved) return;
-        setIsDeleting(true); setShowView(false);
-        try { await newsAPI.deletePost(post.id); onDelete?.(post.id); }
-        catch { showError('РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ', 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РїРѕСЃС‚'); }
-        finally { setIsDeleting(false); }
+        setIsDeleting(true);
+        setShowView(false);
+        try {
+            await newsAPI.deletePost(post.id);
+            onDelete?.(post.id);
+        } catch {
+            showError('Ошибка удаления', 'Не удалось удалить пост');
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     return (
@@ -432,17 +538,18 @@ export default function Post({
                         <img src={coverUrl} alt="cover" className="post-card-img" />
                     ) : (
                         <div className="post-card-no-img">
-                            {post.title
-                                ? <p className="post-card-no-img-title"><AnimatedText text={post.title} size={22} /></p>
-                                : <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 5H4V19L13.2923 9.70649C13.6828 9.31595 14.3159 9.31591 14.7065 9.70641L20 15.0104V5ZM2 3.9934C2 3.44476 2.45531 3 2.9918 3H21.0082C21.556 3 22 3.44495 22 3.9934V20.0066C22 20.5552 21.5447 21 21.0082 21H2.9918C2.44405 21 2 20.5551 2 20.0066V3.9934ZM8 11C6.89543 11 6 10.1046 6 9C6 7.89543 6.89543 7 8 7C9.10457 7 10 7.89543 10 9C10 10.1046 9.10457 11 8 11Z"/></svg>
-                            }
+                            {post.title ? (
+                                <p className="post-card-no-img-title"><AnimatedText text={post.title} size={22} /></p>
+                            ) : (
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M20 5H4V19L13.2923 9.70649C13.6828 9.31595 14.3159 9.31591 14.7065 9.70641L20 15.0104V5ZM2 3.9934C2 3.44476 2.45531 3 2.9918 3H21.0082C21.556 3 22 3.44495 22 3.9934V20.0066C22 20.5552 21.5447 21 21.0082 21H2.9918C2.44405 21 2 20.5551 2 20.0066V3.9934ZM8 11C6.89543 11 6 10.1046 6 9C6 7.89543 6.89543 7 8 7C9.10457 7 10 7.89543 10 9C10 10.1046 9.10457 11 8 11Z" />
+                                </svg>
+                            )}
                         </div>
                     )}
                 </div>
 
-                {/* РІвЂќР‚РІвЂќР‚ Overlay Р С—РЎР‚Р С‘ hover РІвЂќР‚РІвЂќР‚ */}
                 <div className="post-card-hover-overlay">
-                    
                     <div className="post-card-hover-top">
                         {post.title && <p className="post-card-hover-title"><AnimatedText text={post.title} size={17} /></p>}
                         <PostContentRenderer
@@ -469,19 +576,29 @@ export default function Post({
             </article>
 
             <PostViewModal
-                post={post} isOpen={showView} onClose={() => setShowView(false)}
+                post={post}
+                isOpen={showView}
+                onClose={() => setShowView(false)}
                 imageUrls={imageUrls}
                 onLike={() => onLike?.()}
-                onEdit={() => { setShowView(false); setTimeout(() => setShowEdit(true), 150); }}
+                onEdit={() => {
+                    setShowView(false);
+                    setTimeout(() => setShowEdit(true), 150);
+                }}
                 onDelete={handleDelete}
-                canEdit={canEdit} canPin={canPin} onPin={handlePin}
+                canEdit={canEdit}
+                canPin={canPin}
+                onPin={handlePin}
                 showPinControls={showPinControls}
                 hideDeleteAction={hideDeleteAction}
             />
 
-            <EditRichPostModal post={post} isOpen={showEdit} onClose={() => setShowEdit(false)} onUpdate={onUpdate} />
+            <EditRichPostModal
+                post={post}
+                isOpen={showEdit}
+                onClose={() => setShowEdit(false)}
+                onUpdate={onUpdate}
+            />
         </>
     );
 }
-
-

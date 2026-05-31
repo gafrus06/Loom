@@ -54,5 +54,8 @@ public class PhoneVerificationOutboxPublisher {
                 log.error("Failed to publish phone verification outbox event {}", event.getId(), ex);
             }
         }
+        if (!batch.isEmpty()) {
+            repository.saveAll(batch);
+        }
     }
 }

@@ -239,7 +239,7 @@ export default function CampMembershipWidget({ user, isOwnProfile, currentUser }
             {campMembership ? (
                 <div className="membership-info">
                     <div className="membership-card">
-                        <div className="membership-badge">Прикреплен к лагерю</div>
+                        <div className="membership-badge">Прикреплён к лагерю</div>
                         <h4>{campMembership.campName}</h4>
                         <p className="membership-role">Вожатый</p>
                         {campMembership.sessionIds?.length > 0 && (
@@ -261,7 +261,7 @@ export default function CampMembershipWidget({ user, isOwnProfile, currentUser }
                 </div>
             ) : (
                 <div className="no-membership">
-                    <p className="warning-text">Вожатый не прикреплен к лагерю</p>
+                    <p className="warning-text">Вожатый не прикреплён к лагерю</p>
                     <p className="hint-text">
                         Решение по приглашению принимается во вкладке уведомлений.
                     </p>
@@ -283,7 +283,7 @@ export default function CampMembershipWidget({ user, isOwnProfile, currentUser }
                         >
                             <h2>Пригласить вожатого в лагерь</h2>
                             <button className="modal-close-btn" onClick={() => setShowAssignModal(false)}>
-                                ×
+                                ✕
                             </button>
                         </div>
 
@@ -333,7 +333,7 @@ export default function CampMembershipWidget({ user, isOwnProfile, currentUser }
                                     )}
 
                                     <span className="cm-hint">
-                                        Вожатому придет уведомление, и он вступит в лагерь только после подтверждения.
+                                        Вожатому придёт уведомление, и он вступит в лагерь только после подтверждения.
                                     </span>
                                 </div>
                             )}
@@ -378,7 +378,7 @@ export default function CampMembershipWidget({ user, isOwnProfile, currentUser }
             <ConfirmModal
                 open={confirmRemove}
                 title="Выгнать вожатого из лагеря?"
-                message="Вожатый будет удален из лагеря и потеряет доступ к связанным данным."
+                message="Вожатый будет удалён из лагеря и потеряет доступ к связанным данным."
                 confirmLabel="Выгнать"
                 cancelLabel="Отмена"
                 danger

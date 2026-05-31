@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { CSSTransition } from "react-transition-group";
 import { login, register } from "../services/auth";
+import ConsentCheckbox from "../components/ConsentCheckbox";
 import "./Auth.css";
 
 export default function Auth() {
@@ -14,6 +15,7 @@ export default function Auth() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
+    const [personalDataConsent, setPersonalDataConsent] = useState(false);
     const confirmRef = useRef(null);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -22,7 +24,10 @@ export default function Auth() {
     useEffect(() => {
         setError("");
         setSuccess("");
-        if (!isRegister) setConfirm("");
+        if (!isRegister) {
+            setConfirm("");
+            setPersonalDataConsent(false);
+        }
     }, [isRegister]);
 
     const submitText = loading
@@ -36,6 +41,11 @@ export default function Auth() {
 
         if (isRegister && password !== confirm) {
             setError("Пароли не совпадают");
+            return;
+        }
+
+        if (isRegister && !personalDataConsent) {
+            setError("Необходимо дать согласие на обработку персональных данных.");
             return;
         }
 
@@ -118,6 +128,26 @@ export default function Auth() {
                                     />
                                 </div>
                             </CSSTransition>
+
+                            {isRegister && (
+                                <section className="auth-consent-block" aria-labelledby="registration-consent-title">
+                                    <h3 id="registration-consent-title">Согласие на обработку персональных данных</h3>
+                                    <ConsentCheckbox
+                                        checked={personalDataConsent}
+                                        onChange={setPersonalDataConsent}
+                                        required
+                                    >
+                                        Я принимаю{" "}
+                                        <Link to="/privacy-policy" target="_blank" rel="noopener noreferrer">
+                                            Политика обработки персональных данных
+                                        </Link>{" "}
+                                        и даю{" "}
+                                        <Link to="/consents/user-personal-data" target="_blank" rel="noopener noreferrer">
+                                            Согласие на обработку персональных данных пользователя
+                                        </Link>.
+                                    </ConsentCheckbox>
+                                </section>
+                            )}
 
                             <div className="feedback-slot" aria-live="polite">
                                 {error && <p className="form-error">{error}</p>}

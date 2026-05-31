@@ -48,6 +48,13 @@ public class UserProfileFacade {
     private final CounselorProfileRepository counselorProfileRepository;
     private final CounselorProfileService counselorProfileService;
 
+    @Transactional
+    public UserProfileResponse getCurrentUserProfile(UUID userId, String email, List<String> rolesFromGateway) {
+        UserProfile user = userProfileService.findById(userId)
+                .orElseGet(() -> createMissingProfile(userId, email));
+        return buildResponse(user, rolesFromGateway);
+    }
+
     public UserProfileResponse getCurrentUserProfile(UUID userId, List<String> rolesFromGateway) {
         UserProfile user = userProfileService.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId));
@@ -105,7 +112,8 @@ public class UserProfileFacade {
             ParentProfile parent,
             CounselorProfile counselor,
             AdminProfile admin,
-            String avatarUrl
+            String avatarUrl,
+            List<String> roles
     ) {
         var rb = UserProfileResponse.builder()
                 .id(user.getId().toString())
@@ -117,7 +125,7 @@ public class UserProfileFacade {
                 .phoneVerified(Boolean.TRUE.equals(user.getPhoneVerified()))
                 .avatarFileId(user.getAvatarFileId())
                 .active(Boolean.TRUE.equals(user.getActive()))
-                .roles(inferRolesFromProfiles(parent, counselor, admin));
+                .roles(roles);
 
         if (avatarUrl != null) {
             rb.avatarUrl(avatarUrl);
@@ -131,6 +139,34 @@ public class UserProfileFacade {
         }
 
         return rb.build();
+    }
+
+    public Map<UUID, List<String>> resolveRolesForUsers(List<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<UUID, List<String>> rolesByUserId = new HashMap<>();
+        for (UUID userId : userIds) {
+            rolesByUserId.put(userId, resolveRolesForUser(userId));
+        }
+        return rolesByUserId;
+    }
+
+    public List<String> resolveRolesForUser(UUID userId) {
+        try {
+            List<String> roles = authServiceClient.getRolesByUserId(userId).getRoleNames();
+            if (roles != null && !roles.isEmpty()) {
+                return roles;
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to fetch roles from auth-service for userId={}. Falling back to local profile inference. Cause: {}", userId, ex.getMessage());
+        }
+
+        ParentProfile parent = parentProfileRepository.findByUserProfile_Id(userId).orElse(null);
+        CounselorProfile counselor = counselorProfileRepository.findByUserProfile_Id(userId).orElse(null);
+        AdminProfile admin = adminProfileRepository.findByUserProfile_Id(userId).orElse(null);
+        return inferRolesFromProfiles(parent, counselor, admin);
     }
 
     public UploadUrlResponse generateAvatarUploadUrl(UUID userId, String filename, String contentType) {
@@ -195,6 +231,19 @@ public class UserProfileFacade {
             roles.add("ROLE_USER");
         }
         return roles;
+    }
+
+    private UserProfile createMissingProfile(UUID userId, String email) {
+        String resolvedEmail = isBlank(email) ? userId + "@unknown.local" : email;
+        log.warn("UserProfile was missing for authenticated userId={}; creating fallback profile", userId);
+        return userProfileRepository.save(UserProfile.builder()
+                .id(userId)
+                .email(resolvedEmail)
+                .build());
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private Optional<String> resolveAvatarUrl(UserProfile user) {

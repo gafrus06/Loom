@@ -23,3 +23,8 @@ export async function markAllNotificationsRead() {
     const response = await authFetch(`${API_BASE}/notifications/read-all`, { method: "POST" });
     if (!response.ok) throw new Error("Не удалось отметить все уведомления как прочитанные");
 }
+
+export async function deleteNotification(id) {
+    const response = await authFetch(`${API_BASE}/notifications/${id}`, { method: "DELETE" });
+    if (!response.ok) throw new Error("Не удалось удалить уведомление");
+}

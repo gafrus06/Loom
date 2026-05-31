@@ -70,9 +70,12 @@ public class UserListingService {
                 .findAllByUserProfileIdIn(userIds).stream()
                 .collect(Collectors.toMap(a -> a.getUserProfile().getId(), a -> a));
 
-        List<UserProfile> filtered = applyRoleFilter(
-                content, roleFilter, parentsByUserId, counselorsByUserId, adminsByUserId
+        Map<UUID, List<String>> rolesByUserId = userProfileFacade.resolveRolesForUsers(
+                content.stream().map(UserProfile::getId).toList()
         );
+        List<UserProfile> filtered = applyRoleFilter(content, roleFilter, rolesByUserId);
+        Map<UUID, List<String>> filteredRolesByUserId = filtered.stream()
+                .collect(Collectors.toMap(UserProfile::getId, user -> rolesByUserId.getOrDefault(user.getId(), List.of("ROLE_USER"))));
         Map<UUID, String> avatarUrlsByFileId = userProfileFacade.resolveAvatarUrls(filtered);
 
         List<UserProfileResponse> users = filtered.stream()
@@ -81,7 +84,8 @@ public class UserListingService {
                         parentsByUserId.get(u.getId()),
                         counselorsByUserId.get(u.getId()),
                         adminsByUserId.get(u.getId()),
-                        u.getAvatarFileId() != null ? avatarUrlsByFileId.get(u.getAvatarFileId()) : null
+                        u.getAvatarFileId() != null ? avatarUrlsByFileId.get(u.getAvatarFileId()) : null,
+                        filteredRolesByUserId.getOrDefault(u.getId(), List.of("ROLE_USER"))
                 ))
                 .collect(Collectors.toList());
 
@@ -96,15 +100,14 @@ public class UserListingService {
     private List<UserProfile> applyRoleFilter(
             List<UserProfile> users,
             String roleFilter,
-            Map<UUID, ParentProfile> parentsByUserId,
-            Map<UUID, CounselorProfile> counselorsByUserId,
-            Map<UUID, AdminProfile> adminsByUserId
+            Map<UUID, List<String>> rolesByUserId
     ) {
         if (roleFilter == null) return users;
+        String expectedRole = "ROLE_" + roleFilter.toUpperCase();
         return switch (roleFilter.toUpperCase()) {
-            case "ADMIN"     -> users.stream().filter(u ->  adminsByUserId.containsKey(u.getId())).collect(Collectors.toList());
-            case "PARENT"    -> users.stream().filter(u -> parentsByUserId.containsKey(u.getId())).collect(Collectors.toList());
-            case "COUNSELOR" -> users.stream().filter(u -> counselorsByUserId.containsKey(u.getId())).collect(Collectors.toList());
+            case "ADMIN", "PARENT", "COUNSELOR" -> users.stream()
+                    .filter(u -> rolesByUserId.getOrDefault(u.getId(), List.of()).contains(expectedRole))
+                    .collect(Collectors.toList());
             default          -> users;
         };
     }

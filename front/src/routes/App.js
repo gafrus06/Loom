@@ -21,6 +21,12 @@ const SubscriptionPage = lazy(() => import("../pages/SubscriptionPage"));
 const InboxPage = lazy(() => import("../pages/InboxPage"));
 const CampSettingsPage = lazy(() => import("../pages/CampSettingsPage"));
 const SeniorDashboardPage = lazy(() => import("../pages/SeniorDashboardPage"));
+const PrivacyPolicyPage = lazy(() => import("../pages/ConsentDocuments").then((module) => ({ default: module.PrivacyPolicyPage })));
+const UserPersonalDataConsentPage = lazy(() => import("../pages/ConsentDocuments").then((module) => ({ default: module.UserPersonalDataConsentPage })));
+const ParentPersonalDataConsentPage = lazy(() => import("../pages/ConsentDocuments").then((module) => ({ default: module.ParentPersonalDataConsentPage })));
+const ChildPersonalDataConsentPage = lazy(() => import("../pages/ConsentDocuments").then((module) => ({ default: module.ChildPersonalDataConsentPage })));
+const ChildHealthDataConsentPage = lazy(() => import("../pages/ConsentDocuments").then((module) => ({ default: module.ChildHealthDataConsentPage })));
+const PhotoVideoPublicationConsentPage = lazy(() => import("../pages/ConsentDocuments").then((module) => ({ default: module.PhotoVideoPublicationConsentPage })));
 
 function RouteFallback() {
     return (
@@ -51,6 +57,12 @@ export default function App() {
                 <Route path="/auth/:mode" element={<Auth />} />
                 <Route path="/login" element={<Navigate to="/auth/login" replace />} />
                 <Route path="/register" element={<Navigate to="/auth/register" replace />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                <Route path="/consents/user-personal-data" element={<UserPersonalDataConsentPage />} />
+                <Route path="/consents/parent-personal-data" element={<ParentPersonalDataConsentPage />} />
+                <Route path="/consents/child-personal-data" element={<ChildPersonalDataConsentPage />} />
+                <Route path="/consents/child-health-data" element={<ChildHealthDataConsentPage />} />
+                <Route path="/consents/photo-video-publication" element={<PhotoVideoPublicationConsentPage />} />
 
                 <Route
                     element={(

@@ -5,6 +5,7 @@ import AccessDeniedModal from "../components/AccessDeniedModal";
 import SuccessModal from "../components/SuccessModal";
 import { queryKeys } from "../state/queryKeys";
 import {
+    deleteNotification,
     getMyNotifications,
     markAllNotificationsRead,
     markNotificationRead,
@@ -143,44 +144,42 @@ export default function InboxPage() {
         }
 
         try {
+            const assignmentId = selectedNotification.metadata.assignmentId;
+            const relatedNotificationIds = notifications
+                .filter((item) => (
+                    item.type === "CAMP_JOB_INVITATION"
+                    && item.metadata?.assignmentId === assignmentId
+                ))
+                .map((item) => item.id);
+
             if (decision === "accept") {
-                await acceptSessionAssignment(selectedNotification.metadata.assignmentId);
+                await acceptSessionAssignment(assignmentId);
             } else {
-                await rejectSessionAssignment(selectedNotification.metadata.assignmentId);
+                await rejectSessionAssignment(assignmentId);
             }
 
-            const decisionStatus = decision === "accept" ? "ACCEPTED" : "REJECTED";
-            const readAt = new Date().toISOString();
+            await Promise.allSettled(
+                (relatedNotificationIds.length ? relatedNotificationIds : [selectedNotification.id])
+                    .map((notificationId) => deleteNotification(notificationId))
+            );
 
-            queryClient.setQueryData(queryKeys.notifications(PAGE_SIZE), (current) => updateNotificationsPages(
-                current,
-                (item) => item.id === selectedNotification.id
-                    ? {
-                        ...item,
-                        readAt: item.readAt || readAt,
-                        metadata: {
-                            ...(item.metadata || {}),
-                            decisionRequired: "false",
-                            decisionStatus,
-                        },
-                    }
-                    : item
-            ));
+            queryClient.setQueryData(queryKeys.notifications(PAGE_SIZE), (current) => {
+                if (!current?.pages) return current;
+                return {
+                    ...current,
+                    pages: current.pages.map((page) => (
+                        Array.isArray(page)
+                            ? page.filter((item) => !(
+                                item.type === "CAMP_JOB_INVITATION"
+                                && item.metadata?.assignmentId === assignmentId
+                            ))
+                            : page
+                    )),
+                };
+            });
             queryClient.invalidateQueries({ queryKey: queryKeys.unreadNotifications });
 
-            setSelectedNotification((current) => (
-                current
-                    ? {
-                        ...current,
-                        readAt: current.readAt || readAt,
-                        metadata: {
-                            ...(current.metadata || {}),
-                            decisionRequired: "false",
-                            decisionStatus,
-                        },
-                    }
-                    : null
-            ));
+            setSelectedNotification(null);
             setSuccess({
                 open: true,
                 title: decision === "accept" ? "Приглашение принято" : "Приглашение отклонено",
@@ -322,26 +321,26 @@ export default function InboxPage() {
                                 </button>
                             </div>
 
-                            <div className="inbox-notification-modal__body">
-                                <p className="inbox-notification-modal__date">
+                            <div className="inbox-notification-modal-body">
+                                <div className="inbox-notification-modal-meta">
                                     {formatDate(selectedNotification.createdAt)}
-                                </p>
-                                <p className="inbox-notification-modal__text">
+                                </div>
+                                <p className="inbox-notification-modal-text">
                                     {selectedNotification.body}
                                 </p>
 
                                 {isDecisionRequired(selectedNotification) && (
-                                    <div className="inbox-notification-modal__actions">
+                                    <div className="inbox-notification-modal-actions modal-actions-compact">
                                         <button
                                             type="button"
-                                            className="btn-secondary"
+                                            className="btn-modal-cancel"
                                             onClick={() => handleDecision("reject")}
                                         >
                                             Отклонить
                                         </button>
                                         <button
                                             type="button"
-                                            className="btn-primary"
+                                            className="btn-modal-submit"
                                             onClick={() => handleDecision("accept")}
                                         >
                                             Принять

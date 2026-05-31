@@ -37,7 +37,7 @@ public class UserProfileController {
             @AuthenticationPrincipal GatewayUserPrincipal currentUser) {
         return ResponseEntity.ok(
                 userProfileFacade.getCurrentUserProfile(
-                        currentUser.getUserId(), extractRoles(currentUser))
+                        currentUser.getUserId(), currentUser.getUsername(), extractRoles(currentUser))
         );
     }
 
@@ -54,7 +54,7 @@ public class UserProfileController {
     @GetMapping("/profile/completion-status")
     public ResponseEntity<ProfileCompletionStatusResponse> completionStatus(
             @AuthenticationPrincipal GatewayUserPrincipal currentUser) {
-        return ResponseEntity.ok(profileCompletionService.getStatus(currentUser.getUserId()));
+        return ResponseEntity.ok(profileCompletionService.getStatus(currentUser.getUserId(), currentUser.getUsername()));
     }
 
     // -------------------------------------------------------------------------

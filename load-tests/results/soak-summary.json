@@ -1,0 +1,728 @@
+{
+  "state": {
+    "isStdErrTTY": true,
+    "testRunDurationMs": 1872422.6871,
+    "isStdOutTTY": true
+  },
+  "metrics": {
+    "http_req_duration": {
+      "thresholds": {
+        "p(95)<1500": {
+          "ok": true
+        },
+        "p(99)<3000": {
+          "ok": true
+        }
+      },
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 1223.01575,
+        "avg": 342.50623021563587,
+        "min": 1.5151,
+        "med": 167.63780000000003,
+        "max": 5269.2083,
+        "p(90)": 961.57115
+      }
+    },
+    "http_req_failed": {
+      "values": {
+        "rate": 0.01949844131604551,
+        "passes": 1964,
+        "fails": 98762
+      },
+      "thresholds": {
+        "rate<0.05": {
+          "ok": true
+        }
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "http_req_tls_handshaking": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0,
+        "min": 0,
+        "med": 0,
+        "max": 0,
+        "p(90)": 0,
+        "p(95)": 0
+      }
+    },
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 341.93642225344314,
+        "min": 1.3311,
+        "med": 167.02205,
+        "max": 5269.2083,
+        "p(90)": 960.7514,
+        "p(95)": 1222.7037
+      }
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 50,
+        "min": 50,
+        "max": 50
+      }
+    },
+    "group_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 428.89070508632284,
+        "min": 1.5196,
+        "med": 309.7838,
+        "max": 5269.3395,
+        "p(90)": 1079.7993000000001,
+        "p(95)": 1298.9218700000001
+      }
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.059087768798523024,
+        "min": 0,
+        "med": 0,
+        "max": 139.2018,
+        "p(90)": 0,
+        "p(95)": 0
+      }
+    },
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 31187562,
+        "rate": 16656.261545465015
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 10.75558426991247,
+        "count": 20139
+      }
+    },
+    "http_req_duration{expected_response:true}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 1228.883095,
+        "avg": 349.0876237530641,
+        "min": 1.5151,
+        "med": 175.97195,
+        "max": 5269.2083,
+        "p(90)": 968.9116300000006
+      }
+    },
+    "http_req_blocked": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 0,
+        "avg": 0.020130772590989422,
+        "min": 0,
+        "med": 0,
+        "max": 210.8517,
+        "p(90)": 0
+      }
+    },
+    "http_req_connecting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 0,
+        "p(95)": 0,
+        "avg": 0.0008886930881798144,
+        "min": 0,
+        "med": 0,
+        "max": 18.9987
+      }
+    },
+    "vus": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 1,
+        "min": 0,
+        "max": 50
+      }
+    },
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 0.5107201933959451,
+        "min": 0,
+        "med": 0,
+        "max": 380.4308,
+        "p(90)": 0.9994,
+        "p(95)": 1.0039
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 191785319,
+        "rate": 102426.29525977184
+      }
+    },
+    "iteration_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "min": 1134.8846,
+        "med": 3753.9132,
+        "max": 10361.7336,
+        "p(90)": 5127.69728,
+        "p(95)": 5432.35636,
+        "avg": 3735.321777615578
+      }
+    },
+    "checks": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "fails": 1987,
+        "rate": 0.9835601704380921,
+        "passes": 118878
+      },
+      "thresholds": {
+        "rate>0.95": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs": {
+      "values": {
+        "count": 100726,
+        "rate": 53.794477440349745
+      },
+      "type": "counter",
+      "contains": "default"
+    }
+  },
+  "setup_data": {
+    "users": [
+      {
+        "email": "k6-1776513151823-0@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-1@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-2@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-3@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-4@load.local"
+      },
+      {
+        "email": "k6-1776513151823-5@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-6@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-7@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-8@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-9@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-10@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-11@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-12@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-13@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-14@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-15@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-16@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-17@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-18@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-19@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-20@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-21@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-22@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-23@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-24@load.local"
+      },
+      {
+        "email": "k6-1776513151823-25@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-26@load.local"
+      },
+      {
+        "email": "k6-1776513151823-27@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-28@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-29@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-30@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-31@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-32@load.local"
+      },
+      {
+        "email": "k6-1776513151823-33@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-34@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-35@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-36@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-37@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-38@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-39@load.local"
+      },
+      {
+        "email": "k6-1776513151823-40@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-41@load.local"
+      },
+      {
+        "email": "k6-1776513151823-42@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-43@load.local"
+      },
+      {
+        "email": "k6-1776513151823-44@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-45@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-46@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-47@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-48@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-49@load.local"
+      },
+      {
+        "email": "k6-1776513151823-50@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-51@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-52@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-53@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-54@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-55@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-56@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-57@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-58@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-59@load.local"
+      },
+      {
+        "email": "k6-1776513151823-60@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-61@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-62@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-63@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-64@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-65@load.local"
+      },
+      {
+        "email": "k6-1776513151823-66@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-67@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-68@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-69@load.local"
+      },
+      {
+        "email": "k6-1776513151823-70@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-71@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-72@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-73@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-74@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-75@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-76@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-77@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-78@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-79@load.local"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-80@load.local"
+      },
+      {
+        "email": "k6-1776513151823-81@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-82@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-83@load.local"
+      },
+      {
+        "email": "k6-1776513151823-84@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-85@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-86@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-87@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-88@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-89@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-90@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-91@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-92@load.local"
+      },
+      {
+        "email": "k6-1776513151823-93@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-94@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-95@load.local"
+      },
+      {
+        "email": "k6-1776513151823-96@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "email": "k6-1776513151823-97@load.local",
+        "password": "LoadTest123!"
+      },
+      {
+        "password": "LoadTest123!",
+        "email": "k6-1776513151823-98@load.local"
+      },
+      {
+        "email": "k6-1776513151823-99@load.local",
+        "password": "LoadTest123!"
+      }
+    ]
+  },
+  "root_group": {
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [
+      {
+        "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+        "groups": [],
+        "checks": [
+            {
+              "path": "::setup::register status is 200 or 409",
+              "id": "98768a86d868436f3b9b9cf11f11af6f",
+              "passes": 100,
+              "fails": 0,
+              "name": "register status is 200 or 409"
+            }
+          ],
+        "name": "setup",
+        "path": "::setup"
+      },
+      {
+        "path": "::health",
+        "id": "612cc1c9a7c3d7996d1eb6414fb9c69d",
+        "groups": [],
+        "checks": [
+            {
+              "path": "::health::health is 200",
+              "id": "9815c45bb911a8ff6b6e38ece475c200",
+              "passes": 20139,
+              "fails": 0,
+              "name": "health is 200"
+            }
+          ],
+        "name": "health"
+      },
+      {
+        "id": "1df996721bbf7312243c021698a49958",
+        "groups": [],
+        "checks": [
+            {
+              "name": "login is 200",
+              "path": "::auth login::login is 200",
+              "id": "7646d093cf74ef41242cbb0366ac0683",
+              "passes": 20116,
+              "fails": 23
+            },
+            {
+              "fails": 23,
+              "name": "access token exists",
+              "path": "::auth login::access token exists",
+              "id": "0a9caec760e20185d8cf4df242b8f7ea",
+              "passes": 20116
+            }
+          ],
+        "name": "auth login",
+        "path": "::auth login"
+      },
+      {
+        "path": "::user profile",
+        "id": "c64c272c967dba730e3c90bf7d3637bb",
+        "groups": [],
+        "checks": [
+            {
+              "name": "profile is 200",
+              "path": "::user profile::profile is 200",
+              "id": "700fb127b99e070dae1741834810b038",
+              "passes": 20116,
+              "fails": 0
+            },
+            {
+              "passes": 20114,
+              "fails": 2,
+              "name": "completion status is 200",
+              "path": "::user profile::completion status is 200",
+              "id": "1f283b7dda34e732500153cfb4779062"
+            }
+          ],
+        "name": "user profile"
+      },
+      {
+        "name": "news feed",
+        "path": "::news feed",
+        "id": "cd27cbd7c01e9d6c6ca546b5823a9c7f",
+        "groups": [],
+        "checks": [
+            {
+              "fails": 1939,
+              "name": "news feed is 200",
+              "path": "::news feed::news feed is 200",
+              "id": "d250211b610d41fc19a01cb4ee63e85a",
+              "passes": 18177
+            }
+          ]
+      }
+    ],
+    "checks": []
+  },
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "min",
+      "med",
+      "max",
+      "p(90)",
+      "p(95)"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  }
+}

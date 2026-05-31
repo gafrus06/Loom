@@ -112,6 +112,13 @@ public class NotificationServiceImpl implements NotificationService {
         notificationRepository.markAllRead(userId, OffsetDateTime.now());
     }
 
+    @Override
+    public void delete(UUID notificationId, UUID userId) {
+        if (notificationRepository.deleteByIdAndUserId(notificationId, userId) == 0) {
+            throw new ResponseStatusException(NOT_FOUND, "Notification not found");
+        }
+    }
+
     private NotificationResponse toResponse(NotificationRecord record) {
         return NotificationResponse.builder()
                 .id(record.getId())

@@ -3,6 +3,7 @@ package ru.fun.authservice.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@ConditionalOnProperty(prefix = "app.outbox", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class OutboxPublisher {
 
     public static final String USER_REGISTERED = "USER_REGISTERED";
@@ -35,6 +37,7 @@ public class OutboxPublisher {
     private long retentionDays;
 
     @Scheduled(fixedDelayString = "${app.outbox.fixed-delay-ms:2000}")
+    @Transactional
     public void publishScheduled() {
         publishPending();
     }

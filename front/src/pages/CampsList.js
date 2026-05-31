@@ -6,6 +6,7 @@ import { getDetachment } from '../services/detachments';
 import { applyInviteCode, createChildApplication, getMyApplications } from '../services/applications';
 import { resolveCampPhotoUrl, uploadCampPhoto } from '../services/campPhotos';
 import AccessDeniedModal from '../components/AccessDeniedModal';
+import ConsentCheckbox from '../components/ConsentCheckbox';
 import { useAppModal } from '../components/AppModalProvider';
 import Sidebar from '../layouts/Sidebar';
 import './CampsList.css';
@@ -28,6 +29,13 @@ const EMPTY_APPLICATION = {
     specialNeeds: '',
     behavioralNotes: '',
     relation: 'Мама',
+};
+
+const EMPTY_APPLICATION_CONSENTS = {
+    parentPersonalData: false,
+    childPersonalData: false,
+    childHealthData: false,
+    photoVideoPublication: false,
 };
 
 const STATUS_LABELS = {
@@ -59,6 +67,7 @@ export default function CampsList() {
     const [inviteCode, setInviteCode] = useState('');
     const [linkedCampId, setLinkedCampId] = useState(null);
     const [appForm, setAppForm] = useState(EMPTY_APPLICATION);
+    const [applicationConsents, setApplicationConsents] = useState(EMPTY_APPLICATION_CONSENTS);
     const [submitting, setSubmitting] = useState(false);
     const [stepError, setStepError] = useState('');
 
@@ -91,6 +100,11 @@ export default function CampsList() {
     function startApplicationFlow() {
         setStep('code');
         setStepError('');
+        setApplicationConsents(EMPTY_APPLICATION_CONSENTS);
+    }
+
+    function updateApplicationConsent(name, checked) {
+        setApplicationConsents((prev) => ({ ...prev, [name]: checked }));
     }
 
     async function enrichCampPhotos(campList) {
@@ -235,6 +249,21 @@ export default function CampsList() {
             return;
         }
 
+        const missingConsents = [];
+        if (!applicationConsents.parentPersonalData) {
+            missingConsents.push('Необходимо дать согласие на обработку персональных данных родителя.');
+        }
+        if (!applicationConsents.childPersonalData) {
+            missingConsents.push('Необходимо дать согласие на обработку персональных данных ребёнка.');
+        }
+        if (!applicationConsents.childHealthData) {
+            missingConsents.push('Необходимо дать согласие на обработку сведений о здоровье ребёнка.');
+        }
+        if (missingConsents.length > 0) {
+            setStepError(missingConsents.join(' '));
+            return;
+        }
+
         try {
             setSubmitting(true);
             setStepError('');
@@ -252,12 +281,14 @@ export default function CampsList() {
         setInviteCode('');
         setLinkedCampId(null);
         setAppForm(EMPTY_APPLICATION);
+        setApplicationConsents(EMPTY_APPLICATION_CONSENTS);
         setStepError('');
         await loadData();
     }
 
     function handleAddAnother() {
         setAppForm(EMPTY_APPLICATION);
+        setApplicationConsents(EMPTY_APPLICATION_CONSENTS);
         setStepError('');
         setStep('application');
     }
@@ -601,6 +632,52 @@ export default function CampsList() {
                                     <label>Поведенческие особенности</label>
                                     <textarea value={appForm.behavioralNotes} rows={2} onChange={(e) => setAppForm({ ...appForm, behavioralNotes: e.target.value })} />
                                 </div>
+                                <section className="application-consent-block" aria-labelledby="application-consent-title">
+                                    <h3 id="application-consent-title">Согласия на обработку персональных данных</h3>
+                                    <ConsentCheckbox
+                                        checked={applicationConsents.parentPersonalData}
+                                        onChange={(checked) => updateApplicationConsent('parentPersonalData', checked)}
+                                        required
+                                    >
+                                        Я даю согласие на обработку моих персональных данных в целях подачи заявки, связи с представителями лагеря и организации участия ребёнка в смене.{" "}
+                                        <a href="/privacy-policy" target="_blank" rel="noopener noreferrer">
+                                            Политика обработки персональных данных
+                                        </a>{" "}
+                                        и{" "}
+                                        <a href="/consents/parent-personal-data" target="_blank" rel="noopener noreferrer">
+                                            Согласие на обработку персональных данных родителя
+                                        </a>.
+                                    </ConsentCheckbox>
+                                    <ConsentCheckbox
+                                        checked={applicationConsents.childPersonalData}
+                                        onChange={(checked) => updateApplicationConsent('childPersonalData', checked)}
+                                        required
+                                    >
+                                        Я как законный представитель даю согласие на обработку персональных данных моего несовершеннолетнего ребёнка в целях оформления заявки, формирования карточки ребёнка и организации его пребывания в лагере.{" "}
+                                        <a href="/consents/child-personal-data" target="_blank" rel="noopener noreferrer">
+                                            Согласие на обработку персональных данных ребёнка
+                                        </a>.
+                                    </ConsentCheckbox>
+                                    <ConsentCheckbox
+                                        checked={applicationConsents.childHealthData}
+                                        onChange={(checked) => updateApplicationConsent('childHealthData', checked)}
+                                        required
+                                    >
+                                        Я даю согласие на обработку сведений о здоровье ребёнка, необходимых для обеспечения безопасности и организации пребывания ребёнка в лагере.{" "}
+                                        <a href="/consents/child-health-data" target="_blank" rel="noopener noreferrer">
+                                            Согласие на обработку сведений о здоровье ребёнка
+                                        </a>.
+                                    </ConsentCheckbox>
+                                    <ConsentCheckbox
+                                        checked={applicationConsents.photoVideoPublication}
+                                        onChange={(checked) => updateApplicationConsent('photoVideoPublication', checked)}
+                                    >
+                                        Я даю согласие на публикацию фото- и видеоматериалов с участием ребёнка в новостной ленте лагеря.{" "}
+                                        <a href="/consents/photo-video-publication" target="_blank" rel="noopener noreferrer">
+                                            Согласие на публикацию фото и видео
+                                        </a>.
+                                    </ConsentCheckbox>
+                                </section>
                                 {stepError && <p style={{ color: 'var(--error)', marginTop: '8px' }}>{stepError}</p>}
                             </div>
                             <div className="modal-footer">

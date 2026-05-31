@@ -1,0 +1,51 @@
+.consent-document-page {
+    min-height: 100vh;
+    padding: 48px 20px;
+    display: grid;
+    place-items: start center;
+    background: radial-gradient(circle 510px at 67% 100%, rgb(28,11,53) 6%, rgb(27,17,58) 20%, #0a0a0f 100%);
+    color: var(--text, #EAEFF7);
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.consent-document {
+    width: min(760px, 100%);
+    padding: 32px;
+    border-radius: 16px;
+    background: rgba(20,23,30,0.82);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+}
+
+.consent-document h1 {
+    margin: 0 0 18px;
+    font-size: clamp(26px, 4vw, 38px);
+    line-height: 1.2;
+    color: var(--text, #EAEFF7);
+}
+
+.consent-document p {
+    margin: 0;
+    color: var(--muted, #A9B3C7);
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.consent-document__notice {
+    margin-top: 22px !important;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    color: #facc15 !important;
+    font-weight: 700;
+}
+
+@media (max-width: 640px) {
+    .consent-document-page {
+        padding: 24px 12px;
+    }
+
+    .consent-document {
+        padding: 24px;
+        border-radius: 12px;
+    }
+}

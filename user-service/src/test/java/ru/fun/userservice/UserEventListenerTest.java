@@ -54,18 +54,38 @@ class UserEventListenerTest {
     }
 
     @Test
-    void duplicateRegisteredEventIsSkippedByInbox() {
+    void duplicateRegisteredEventWithExistingProfileIsSkipped() {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UserRegisteredEvent event = new UserRegisteredEvent();
+        event.setEventId(eventId);
+        event.setUserId(userId.toString());
+        event.setEmail("test@example.com");
+
+        when(userProfileRepository.existsById(userId)).thenReturn(true);
+
+        listener.handleUserRegistered(event);
+
+        verify(userProfileRepository, never()).save(any());
+        verify(processedAuthEventRepository).save(any());
+    }
+
+    @Test
+    void duplicateRegisteredEventWithoutProfileRecreatesProfile() {
+        UUID userId = UUID.randomUUID();
         UUID eventId = UUID.randomUUID();
         UserRegisteredEvent event = new UserRegisteredEvent();
         event.setEventId(eventId);
-        event.setUserId(UUID.randomUUID().toString());
+        event.setUserId(userId.toString());
         event.setEmail("test@example.com");
 
+        when(userProfileRepository.existsById(userId)).thenReturn(false);
         when(processedAuthEventRepository.existsById(eventId)).thenReturn(true);
 
         listener.handleUserRegistered(event);
 
-        verifyNoInteractions(userProfileRepository);
+        verify(userProfileRepository).save(any(UserProfile.class));
+        verify(processedAuthEventRepository).save(any());
     }
 
     @Test

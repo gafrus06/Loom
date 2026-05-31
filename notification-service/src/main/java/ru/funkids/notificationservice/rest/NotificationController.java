@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -67,6 +68,14 @@ public class NotificationController {
     @PostMapping("/read-all")
     public ResponseEntity<Void> markAllRead(@AuthenticationPrincipal GatewayUserPrincipal currentUser) {
         notificationService.markAllRead(currentUser.getUserId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{notificationId}")
+    public ResponseEntity<Void> delete(
+            @PathVariable UUID notificationId,
+            @AuthenticationPrincipal GatewayUserPrincipal currentUser) {
+        notificationService.delete(notificationId, currentUser.getUserId());
         return ResponseEntity.noContent().build();
     }
 }
